@@ -1,0 +1,13 @@
+pandas
+scikit-learn
+xgboost
+ucimlrepo
+joblib
+fastapi
+uvicorn
+python-multipart
+shap
+imbalanced-learn
+matplotlib
+plotly
+streamlit
