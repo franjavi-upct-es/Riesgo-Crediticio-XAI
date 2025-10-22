@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/Language-Español-yellow.svg)](README.en.md)
+
 # Riesgo Crediticio XAI
 
 > Proyecto pequeño: clasificación de riesgo crediticio con explicaciones SHAP
@@ -15,7 +17,8 @@
 10. [Problemas comunes y soluciones](#problemas)
 11. [Extensiones y buenas prácticas](#extensiones)
 
-### [1. Visión general](#vision-general)
+<a name="vision-general"></a>
+### 1. Visión general
 
 Este repositorio implementa un pipeline mínimo de **entrenamiento + API + dashboard** para un modelo de clasificación de riesgo crediticio, con explicaciones locales mediante **SHAP**. Es ideal como demo/PoC para mostrar cómo integrar un modelo XGBoost con una API FastAPI y un dashboard Streamlit que consume esa API para mostrar explicaciones locales.
 
@@ -26,7 +29,8 @@ El flujo general es:
 -  `streamlit_dashboard.py` sirve una interfaz que muestra evaluación global (con conjunto sintético balanceado) y una demo de predicción local que llama a la API.
 - `run_all.py` orquesta la creación del entorno virtual, la instalación de dependencias, el entrenamiento, el arranque de la API y el dashboard.
 
-### [2. Estructura del proyecto](#estructura)
+<a name="estructura"></a>
+### 2. Estructura del proyecto
 
 ```bash
 ├── model_train.py            # entrenamiento y generación de artefactos (models/, data/)
@@ -38,9 +42,10 @@ El flujo general es:
 └── data/                    # datos generados (synthetic_test_set.csv)
 ```
 
-### [3. Diagramas (Mermaid)](#diagramas)
+<a name="diagramas"></a>
+### 3. Diagramas (Mermaid)
 
-#### 1) Arquitectura general (flujo alto nivel)
+#### 3.1. Arquitectura general (flujo alto nivel)
 
 ```mermaid
 flowchart LR
@@ -59,7 +64,7 @@ flowchart LR
     API --> |retorna JSON con SHAP| Dashboard
 ```
 
-#### 2) Secuencia de una predicción local (ej. botón en Streamlit)
+#### 3.2. Secuencia de una predicción local (ej. botón en Streamlit)
 
 ```mermaid
 sequenceDiagram
@@ -80,7 +85,7 @@ sequenceDiagram
     S->>U: Muestra gráficos (SHAP global/local) y detalles
 ```
 
-#### 3) Dependencias entre módulos
+#### 3.3. Dependencias entre módulos
 
 ```mermaid
 graph TD
@@ -93,8 +98,8 @@ graph TD
     streamlit_dashboard --> predict_api
     streamlit_dashboard --> models
 ```
-
-### [4. Instalación rápida](#instalacion)
+<a name="instalacion"></a>
+### 4. Instalación rápida
 > Recomendado: usar `run_all.py` para una experiencia "todo en uno" (crea venv, instala paquetes, entrena y levanta servicios). Ver la sección _Ejecución_ para detalles.
 
 Si prefieres hacer todo paso a paso:
@@ -130,7 +135,8 @@ requests
 ucimlrepo
 ```
 
-### [5. Ejecución](#exe)
+<a name="exe"></a>
+### 5. Ejecución
 
 #### Opción A - Orquestado (recomendado para demo)
 
@@ -165,7 +171,8 @@ uvicorn predict_api:app --reload --host 127.0.0.1 --port 8000
 streamlit run streamlit_dashboard.py
 ```
 
-### [6. Detalles por módulo](#detalles)
+<a name="detalles"></a>
+### 6. Detalles por módulo
 
 #### `model_train.py`
 
@@ -218,7 +225,8 @@ streamlit run streamlit_dashboard.py
 
 - `API_URL` por defecto: `http://127.0.0.1:8000/predict_risk/` (asegúrate de que la API esté en ese host/puerto).
 
-### [7. API: `/predict_risk/` (documentación)](#api)
+<a name="api"></a>
+### 7. API: `/predict_risk/` (documentación)
 
 #### Esquema (simplificado) - Campos aceptados
 
@@ -303,7 +311,8 @@ curl -s -X POST "http://127.0.0.1:8000/predict_risk/" \
 }
 ```
 
-### [8. Datos y artefactos generados](#datos)
+<a name="datos"></a>
+### 8. Datos y artefactos generados
 
 - `models/xgb_model.pkl` - modelo serializado con `joblib`. Contiene el estimador XGBoost entrenado.
 - `models/feature_names.pkl` - lista de nombres de columnas tras el _one-hot encoding_. Es **fundamental** para que la API construya correctamente las filas de entrada.
@@ -318,7 +327,8 @@ curl -s -X POST "http://127.0.0.1:8000/predict_risk/" \
 - Los modelos pueden ocupar entre 1-50 MB según parámetros del XGBoost.
 - Guarda un fichero de hashes (por ejemplo `artifacts/checksums.txt`) para trazabilidad.
 
-### [9. Pruebas y validación](#test-val)
+<a name="test-val"></a>
+### 9. Pruebas y validación
 #### 9.1. Tests recomendados
 
 **Unit tests (pytest):**
@@ -345,7 +355,8 @@ curl -s -X POST "http://127.0.0.1:8000/predict_risk/" \
 - Verificar `requirements.txt` con dependencias exactas (`pip freeze`)
 - Automatizar pasos en un `Makefile` o dentro de `run_all.py`.
 
-### [10. Problemas comunes y soluciones](#problemas)
+<a name="problemas"></a>
+### 10. Problemas comunes y soluciones
 #### 10.1. Artefactos no encontrados
 
 **Error:** `FileNotFoundError` al abrir `xgb_model.pkl`.
@@ -396,7 +407,8 @@ app.add_middleware(
 )
 ```
 
-### [11. Extensiones y buenas prácticas](#extensiones)
+<a name="extensiones"></a>
+### 11. Extensiones y buenas prácticas
 
 - **Dockerización:**
 
