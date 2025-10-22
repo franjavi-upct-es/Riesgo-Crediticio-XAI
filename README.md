@@ -1,4 +1,4 @@
-[![English](https://img.shields.io/badge/Language-Español-yellow.svg)](README.en.md)
+[![English](https://img.shields.io/badge/Language-English-yellow.svg)](README.en.md)
 
 # Riesgo Crediticio XAI
 
