@@ -1,0 +1,35 @@
+# infra/k8s/ingress.yml
+#
+# Assumes nginx-ingress-controller and cert-manager are installed.
+# Replace "api.credit-risk.example.com" with your actual domain.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: credit-risk-api
+  namespace: credit-risk
+  labels:
+    app.kubernetes.io/name: credit-risk-api
+    app.kubernetes.io/part-of: credit-risk-xai
+  annotations:
+    nginx.ingress.kubernetes.io/rate-limit: "60"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.credit-risk.example.com
+      secretName: credit-risk-tls
+  rules:
+    - host: api.credit-risk.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: credit-risk-api
+                port:
+                  name: http

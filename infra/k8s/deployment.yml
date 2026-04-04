@@ -1,0 +1,120 @@
+# infra/k8s/deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: credit-risk-api
+  namespace: credit-risk
+  labels:
+    app.kubernetes.io/name: credit-risk-api
+    app.kubernetes.io/part-of: credit-risk-xai
+    app.kubernetes.io/version: IMAGE_TAG
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: credit-risk-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: credit-risk-api
+        app.kubernetes.io/part-of: credit-risk-xai
+        app.kubernetes.io/version: IMAGE_TAG
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: default
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: api
+          image: ghcr.io/OWNER/credit-risk-xai/api:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: credit-risk-config
+            - secretRef:
+                name: credit-risk-secrets
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+          # Liveness: is the process alive?
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          # Readiness: can it serve traffic? (model loaded)
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # Startup: give the model time to load on cold start
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          volumeMounts:
+            - name: model-artifacts
+              mountPath: /app/models
+              readOnly: true
+            - name: data-artifacts
+              mountPath: /app/data
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: model-artifacts
+          persistentVolumeClaim:
+            claimName: model-artifacts-pvc
+        - name: data-artifacts
+          persistentVolumeClaim:
+            claimName: data-artifacts-pvc
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi

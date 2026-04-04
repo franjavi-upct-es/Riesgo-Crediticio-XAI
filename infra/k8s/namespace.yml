@@ -1,0 +1,7 @@
+# infra/k8s/namespace.yml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: credit-risk
+  labels:
+    app.kubernetes.io/part-of: credit-risk-xai

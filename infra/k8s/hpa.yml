@@ -1,0 +1,47 @@
+# infra/k8s/hpa.yml
+#
+# Horizontal Pod Autoscaler for the Credit Risk API.
+# Scales between 2-8 replicas based on CPU utilization.
+# For custom metrics (e.g., request latency p99), configure
+# the Prometheus adapter and add the metrics section below.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: credit-risk-api
+  namespace: credit-risk
+  labels:
+    app.kubernetes.io/name: credit-risk-api
+    app.kubernetes.io/part-of: credit-risk-xai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: credit-risk-api
+  minReplicas: 2
+  maxReplicas: 8
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

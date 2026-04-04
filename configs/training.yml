@@ -1,0 +1,35 @@
+# configs/training.yml
+#
+# Training hyperparameters and pipeline configuration.
+# Values here can be overridden by environment variables (TRAIN_ prefix).
+# This file is the canonical reference for experiment reproducibility.
+
+data:
+  uci_dataset_id: 144
+  test_size: 0.2
+  random_state: 42
+
+model:
+  objective: "binary:logistic"
+  eval_metric: "logloss"
+  n_estimators: 100
+  learning_rate: 0.1
+  max_depth: 6
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 1
+  gamma: 0.0
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+
+smote:
+  sampling_strategy: "minority"
+  k_neighbors: 5
+
+mlflow:
+  experiment_name: "credit-risk-xai"
+  run_name_prefix: "xgb"
+  tags:
+    project: "credit-risk-xai"
+    model_type: "xgboost"
+    dataset: "german-credit-uci-144"

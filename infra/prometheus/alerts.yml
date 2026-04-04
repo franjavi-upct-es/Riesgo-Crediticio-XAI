@@ -1,0 +1,145 @@
+# infra/prometheus/alerts.yml
+#
+# Prometheus alerting rules for the Credit Risk XAI API.
+# Loaded by Prometheus via rule_files in prometheus.yml.
+
+groups:
+  # ---------------------------------------------------------------------------
+  # API health alerts
+  # ---------------------------------------------------------------------------
+  - name: api_health
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(api_requests_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(api_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API error rate exceeds 5%"
+          description: >
+            The 5xx error rate has been above 5% for the last 2 minutes.
+            Current value: {{ $value | humanizePercentage }}.
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))
+          > 2.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p99 latency exceeds 2 seconds"
+          description: >
+            The 99th percentile request latency has exceeded 2s for 3 minutes.
+            Current p99: {{ $value | humanizeDuration }}.
+
+      - alert: HighLatencyP50
+        expr: |
+          histogram_quantile(0.50, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))
+          > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API median latency exceeds 500ms"
+          description: >
+            The median request latency has exceeded 500ms for 5 minutes.
+
+      - alert: APIDown
+        expr: up{job="credit-risk-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Credit Risk API is down"
+          description: "Prometheus cannot scrape the API metrics endpoint."
+
+  # ---------------------------------------------------------------------------
+  # Prediction quality alerts
+  # ---------------------------------------------------------------------------
+  - name: prediction_quality
+    rules:
+      - alert: PredictionErrorSpike
+        expr: |
+          sum(rate(prediction_errors_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prediction error rate spike detected"
+          description: >
+            More than 0.1 prediction errors per second for the last 2 minutes.
+            Check server logs for stack traces.
+
+      - alert: SHAPComputationSlow
+        expr: |
+          histogram_quantile(0.95, sum(rate(shap_computation_duration_seconds_bucket[5m])) by (le))
+          > 5.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SHAP computation p95 exceeds 5 seconds"
+          description: >
+            SHAP explanation computation is taking too long.
+            Consider caching or simplifying the model.
+
+      - alert: HighRiskPredictionSpike
+        expr: |
+          (
+            sum(rate(predictions_total{risk_label=~".*High Risk.*"}[10m]))
+            /
+            sum(rate(predictions_total[10m]))
+          ) > 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Over 70% of predictions are High Risk"
+          description: >
+            An unusual proportion of predictions are classified as High Risk.
+            This may indicate data drift or a model issue.
+
+  # ---------------------------------------------------------------------------
+  # Drift detection alerts
+  # ---------------------------------------------------------------------------
+  - name: drift_detection
+    rules:
+      - alert: DataDriftDetected
+        expr: drift_score > 0.3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data drift detected ({{ $value | humanizePercentage }} of features)"
+          description: >
+            More than 30% of input features show statistically significant
+            distribution shift compared to the training reference.
+            Consider retraining the model.
+
+      - alert: SevereDataDrift
+        expr: drift_score > 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Severe data drift ({{ $value | humanizePercentage }} of features)"
+          description: >
+            Over 50% of features have drifted. Model predictions may be unreliable.
+            Immediate retraining recommended.
+
+      - alert: PredictionDistributionDrift
+        expr: prediction_drift_pvalue < 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prediction distribution drift detected"
+          description: >
+            The distribution of predicted probabilities has shifted significantly
+            compared to the training reference (KS test p-value: {{ $value }}).

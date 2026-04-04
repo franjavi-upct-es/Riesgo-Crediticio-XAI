@@ -1,426 +1,164 @@
-[![English](https://img.shields.io/badge/Language-English-yellow.svg)](README.en.md)
+# Credit Risk XAI
 
-# Riesgo Crediticio XAI
+> Production-grade credit risk classification with SHAP explanations
 
-> Proyecto pequeño: clasificación de riesgo crediticio con explicaciones SHAP
+## Overview
 
-## Índice
-1. [Visión general](#vision-general)
-2. [Estructura del proyecto](#estructura)
-3. [Diagramas (Mermaid)](#diagramas)
-4. [Instalación rápida](#instalacion)
-5. [Ejecución](#exe)
-6. [Detalles por módulo](#detalles)
-7. [API: `/predict_risk/` (documentación)](#api)
-8. [Datos y artefactos generados](#datos)
-9. [Pruebas y validación](#test-val)
-10. [Problemas comunes y soluciones](#problemas)
-11. [Extensiones y buenas prácticas](#extensiones)
+End-to-end MLOps pipeline for credit risk classification using XGBoost + SHAP. Designed as a production-ready system with proper architecture, security, observability, experiment tracking, drift detection, CI/CD, and Kubernetes deployment — even without a live deployment target.
 
-<a name="vision-general"></a>
-### 1. Visión general
+**System layers:**
 
-Este repositorio implementa un pipeline mínimo de **entrenamiento + API + dashboard** para un modelo de clasificación de riesgo crediticio, con explicaciones locales mediante **SHAP**. Es ideal como demo/PoC para mostrar cómo integrar un modelo XGBoost con una API FastAPI y un dashboard Streamlit que consume esa API para mostrar explicaciones locales.
+1. **Training pipeline** — config-driven (YAML), with MLflow experiment tracking, evaluation metrics, and artifact versioning.
+2. **FastAPI API** — predictions with SHAP explanations, evaluation endpoints, API key auth, rate limiting, Prometheus metrics, structured JSON logging, drift detection, and OpenTelemetry tracing.
+3. **React + TypeScript dashboard** — three-page SPA: global evaluation, interactive local prediction, monitoring overview.
+4. **Observability** — Prometheus + Grafana + AlertManager + Jaeger. 11 custom metrics, 8 alerting rules, distributed tracing.
+5. **CI/CD + K8s** — GitHub Actions (lint → test → build → push → deploy), Docker images, production Kubernetes manifests.
 
-El flujo general es:
-
--  `model_train.py` prepara los datos, entrena el modelo y guarda artefactos.
--  `predict_api.py` expone una API REST que recibe un caso, aplica preprocesado compatible con las columnas de entrenamiento, realiza inferencia y devuelve una explicación SHAP.
--  `streamlit_dashboard.py` sirve una interfaz que muestra evaluación global (con conjunto sintético balanceado) y una demo de predicción local que llama a la API.
-- `run_all.py` orquesta la creación del entorno virtual, la instalación de dependencias, el entrenamiento, el arranque de la API y el dashboard.
-
-<a name="estructura"></a>
-### 2. Estructura del proyecto
+## Quick Start
 
 ```bash
-├── model_train.py            # entrenamiento y generación de artefactos (models/, data/)
-├── predict_api.py           # FastAPI: endpoint /predict_risk/
-├── streamlit_dashboard.py   # Streamlit: dashboard que consume la API
-├── run_all.py               # script de orquestación (venv, instalar, entrenar, levantar API y Streamlit)
-├── requirements.txt         # (debe existir) dependencias del proyecto
-├── models/                  # artefactos generados (xgb_model.pkl, feature_names.pkl)
-└── data/                    # datos generados (synthetic_test_set.csv)
+# 1. Install
+python -m venv .venv && source .venv/bin/activate
+make install-dev
+
+# 2. Train (model + evaluation metrics + MLflow run)
+make train
+
+# 3. Run API + dashboard
+make api          # Terminal 1 — http://localhost:8000/docs
+make dashboard    # Terminal 2 — http://localhost:5173
 ```
 
-<a name="diagramas"></a>
-### 3. Diagramas (Mermaid)
-
-#### 3.1. Arquitectura general (flujo alto nivel)
-
-```mermaid
-flowchart LR
-    subgraph Train 
-        MT[model_train.py] --> Models[models/xgb_model.pkl\nmodels/features_names.pkl]
-        MT --> |guarda| Data[data/synthetic_test_set.csv]
-    end
-    
-    RunAll[run_all.py] --> MT
-    RunAll --> API[predict_api.py]
-    RunAll --> Dashboard[streamlit_dashboard.py]
-    
-    Models --> API
-    Models --> Dashboard
-    Dashboard --> |POST /predict_risk/| API
-    API --> |retorna JSON con SHAP| Dashboard
-```
-
-#### 3.2. Secuencia de una predicción local (ej. botón en Streamlit)
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario (navegador)
-    participant S as Streamlit Dashboard
-    participant A as FastAPI (/predict_risk)
-    participant M as Modelo XGBoost
-    participant E as SHAP Explainer
-    
-    U->>S: Click "Generar caso y Predecir"
-    S->>A: POST /predict_risk (payload JSON)
-    A->>A: preprocess_input(payload)
-    A->>M: model.predict_proba(X_processed)
-    A-->>M: probabilidad
-    A->>E: explainer.shap_values(X_processed)
-    E-->>A: shap_values + expected_value
-    A-->>S: JSON respuesta (predicción, probabilty, interpretacion_xai)
-    S->>U: Muestra gráficos (SHAP global/local) y detalles
-```
-
-#### 3.3. Dependencias entre módulos
-
-```mermaid
-graph TD
-    model_train --> models[models/]
-    model_train --> data[data/]
-    run_all --> model_train
-    run_all --> predict_api
-    run_all --> streamlit_dashboard
-    predict_api --> models
-    streamlit_dashboard --> predict_api
-    streamlit_dashboard --> models
-```
-<a name="instalacion"></a>
-### 4. Instalación rápida
-> Recomendado: usar `run_all.py` para una experiencia "todo en uno" (crea venv, instala paquetes, entrena y levanta servicios). Ver la sección _Ejecución_ para detalles.
-
-Si prefieres hacer todo paso a paso:
+### Docker (full observability stack)
 
 ```bash
-# Crear y activar entorno (Linux/macOS)
-python -m venv .venv
-source .venv/bin/activate
+make train && make docker-up
 
-# (Windows - Powershell)
-# python -m venv .venv
-# .\.venv\Scripts\Activate.ps1
-
-# Instalar dependencias (asegúrate de tener requirements.txt)
-pip install -r requirements.txt
-```
-**Dependencias mínimas esperadas** (añade versiones concretas en `requirements.txt` para reproducibilidad):
-
-```
-fastapi
-uvicorn
-pandas
-numpy
-xgboost
-scikit-learn
-imbalanced-learn
-joblib
-shap
-streamlit
-plotly
-matplotlib
-requests
-ucimlrepo
+# Dashboard:     http://localhost:5173
+# API docs:      http://localhost:8000/docs
+# Prometheus:    http://localhost:9090
+# AlertManager:  http://localhost:9093
+# Grafana:       http://localhost:3000 (admin/admin)
+# Jaeger UI:     http://localhost:16686
 ```
 
-<a name="exe"></a>
-### 5. Ejecución
+## Project Structure
 
-#### Opción A - Orquestado (recomendado para demo)
+```
+credit-risk-xai/
+├── pyproject.toml                          # Package metadata and tool config
+├── Makefile                                # Development task runner
+├── configs/training.yml                    # Training hyperparameters (YAML)
+├── Dockerfile.api / Dockerfile.dashboard   # Multi-stage production images
+├── docker-compose.yml                      # 6 services: API, Dashboard, Prometheus,
+│                                           #   AlertManager, Grafana, Jaeger
+├── src/
+│   ├── config.py                           # Centralized settings (8 sections)
+│   ├── data/
+│   │   ├── loader.py                       # UCI dataset fetching
+│   │   └── preprocessing.py                # Shared encoding (train + serve)
+│   ├── model/
+│   │   ├── train.py                        # Training pipeline (YAML + MLflow)
+│   │   ├── training_config.py              # YAML config loader + typed dataclasses
+│   │   ├── experiment_tracker.py           # MLflow context manager
+│   │   ├── evaluate.py                     # Metrics computation + JSON persistence
+│   │   └── registry.py                     # Artifact loading and validation
+│   ├── explain/
+│   │   └── shap_engine.py                  # SHAP computation and normalization
+│   ├── api/
+│   │   ├── app.py                          # FastAPI factory + OTel + lifespan
+│   │   ├── auth.py                         # API key auth (constant-time)
+│   │   ├── schemas.py                      # Request/response models
+│   │   ├── dependencies.py                 # DI (model, explainer, drift detector)
+│   │   ├── middleware.py                   # CORS, security, metrics, rate limiting
+│   │   └── routes/
+│   │       ├── health.py                   # /health, /alive
+│   │       ├── predict.py                  # /predict_risk/ (metrics + drift + OTel)
+│   │       ├── evaluation.py               # /evaluation/* (6 endpoints)
+│   │       └── drift.py                    # /monitoring/drift (GET + POST analyze)
+│   └── monitoring/
+│       ├── metrics.py                      # Prometheus metrics + /metrics endpoint
+│       ├── drift.py                        # KS-test drift detection + Prometheus gauges
+│       └── tracing.py                      # OpenTelemetry setup + auto-instrumentation
+│
+├── dashboard/                              # React + TypeScript + Tailwind (Vite)
+│   └── src/ (21 files)
+│
+├── tests/ (157 tests, 79% coverage)
+│   ├── unit/ (12 test files)
+│   └── integration/ (2 test files)
+│
+├── .github/workflows/
+│   ├── ci.yml                              # Lint → test → build (push/PR)
+│   └── cd.yml                              # Build → push GHCR → deploy K8s (tags)
+│
+└── infra/
+    ├── k8s/ (7 manifests)                  # Namespace, ConfigMap, Secret, Deployment,
+    │                                       #   Service, Ingress, HPA
+    ├── prometheus/
+    │   ├── prometheus.yml                  # Scrape config + alertmanager target
+    │   └── alerts.yml                      # 8 alerting rules (3 groups)
+    ├── alertmanager/
+    │   └── alertmanager.yml                # Severity routing + inhibition
+    └── grafana/provisioning/
+```
+
+## Drift Detection
+
+The API detects data and prediction drift using statistical tests (Kolmogorov-Smirnov) comparing live prediction inputs against the training reference distribution.
+
+Every call to `/predict_risk/` records the preprocessed input vector and predicted probability in a rolling buffer. When the buffer reaches `DRIFT_BUFFER_SIZE` (default: 50), drift can be analyzed:
 
 ```bash
-python run_all.py
+# Check current drift status
+curl http://localhost:8000/monitoring/drift
+
+# Trigger manual analysis
+curl -X POST http://localhost:8000/monitoring/drift/analyze
 ```
-`run_all.py` se encarga de:
-1. Crear un entorno virtual `.venv` si no existe y ejecutar `pip install -r requirements.txt`.
-2. Lanzar `model_train.py` para generar los artefactos (modelo + feature_names + dataset sintético).
-3. Iniciar la API de FastAPI (uvicorn) en segundo plano.
-4. Iniciar Streamlit (abrirá el navegador o mostrará la URL en consola).
 
-> **Observación importante:** `uvicorn` por defecto arranca en el puerto `8000`. `streamlit_dashboard.py` asume `API_URL="http://127.0.0.1:8000/predict_risk/"`. `run_all.py` imprime una URL `127.0.0.1:8000` en su salida, pero esa línea es informativa y **no** refleja el puerto por defecto usado por `uvicorn` (8000). Si deseas exponerlo en otro puerto cambia `API_COMMAND` en `run_all.py` o añade `--port 8000`. 
+Three Prometheus gauges are updated on each analysis: `drift_score` (fraction of features drifted), `drift_features_drifted_count`, and `prediction_drift_pvalue`. These feed the alerting rules in `alerts.yml`.
 
-#### Opción B - Ejecutar módulos individualmente
+## OpenTelemetry Tracing
 
-- Entrenar y generar artefactos:
+When `OTEL_ENABLED=true`, the API auto-instruments all FastAPI requests and adds manual spans for preprocessing, model inference, and SHAP computation. Traces are exported via OTLP gRPC to a collector (Jaeger in docker-compose).
+
+View traces at `http://localhost:16686` (Jaeger UI). Search for service `credit-risk-api`.
+
+## Alerting
+
+8 Prometheus alerting rules across 3 groups:
+
+| Group | Alert | Condition | Severity |
+|-------|-------|-----------|----------|
+| API health | HighErrorRate | 5xx rate > 5% for 2m | critical |
+| API health | HighLatencyP99 | p99 > 2s for 3m | warning |
+| API health | HighLatencyP50 | p50 > 500ms for 5m | warning |
+| API health | APIDown | scrape target down for 1m | critical |
+| Predictions | PredictionErrorSpike | errors > 0.1/s for 2m | critical |
+| Predictions | SHAPComputationSlow | p95 > 5s for 3m | warning |
+| Predictions | HighRiskPredictionSpike | > 70% high-risk for 10m | warning |
+| Drift | DataDriftDetected | drift_score > 30% for 5m | warning |
+| Drift | SevereDataDrift | drift_score > 50% for 5m | critical |
+| Drift | PredictionDistributionDrift | KS p-value < 0.01 for 5m | warning |
+
+AlertManager routes critical alerts with 10s group wait (1h repeat) and warnings with 1m group wait (4h repeat). Critical alerts inhibit warnings for the same alert name.
+
+## Development
 
 ```bash
-python model_train.py
+make help              # All commands
+make test              # 157 tests with coverage
+make lint              # Ruff + tsc
+make check             # lint + type-check + tests
+make docker-up/down    # Full 6-service stack
+make clean             # Remove generated files
 ```
 
-- Levantar la API (desde el mismo entorno donde están `models/`)
-
-```bash
-uvicorn predict_api:app --reload --host 127.0.0.1 --port 8000
-```
-
-- Ejecutar el dashboard:
-
-```bash
-streamlit run streamlit_dashboard.py
-```
-
-<a name="detalles"></a>
-### 6. Detalles por módulo
-
-#### `model_train.py`
-
-- Carga el dataset de UCI (Statlog German Credict) usando `ucimlrepo.fetch_ucirepo`.
-- Renombra las columnas con `COLUMN_MAPPING` para legibilidad.
-- Codifica variables categóricas con `pd.get_dummies(..., drop_first=True)`.
-- Entrena un `xgboost.XGBClassifier` (parámetros: 100 estimators, lr 0.1, `scale_pos_weight` calculado para compensar desequilibrio) y guarda:
-  
-  - `models/xgb_model.pkl` (joblib)
-  - `models/feature_names.pkl` (lista de nombres de columnas después de encoding)
-
-- Genera un `data/synthetic_test_set.csv` balanceado mediante `SMOTE` a partir del split de prueba.
-
-**Puntos útiles:**
-
-- `feature_names` es crítico para que `predict_api.py` construya la fila de entrada con exactamente las columnas esperadas.
-
-#### `predict_api.py`
-
-- Exposición de FastAPI con un endpoint: `POST /predict_risk/`.
-- Estructura de entrada definida por `Pydantic` (`CreditData`), con campos que están escritos en claro (ver `CreditData` en el fichero).
-- `preprocess_input(...)` realiza:
-
-    - `pd.get_dummies` sobre la fila recibida (para mantener la consistencia con el training encoding).
-    - Construcción de un DataFrame final con columnas exactamente en el orden de `feature_names` rellenando 0s para columnas ausentes.
-
-- Inferencia y explicación:
-
-    - `model.predict_proba(...)` para obtener la probabilidad de riesgo.
-    - `explainer = shap.TreeExplainer(model)` y `explainer.shap_values(...)` para obtener contribuciones por feature.
-    - El endpoint intenta manejar múltiples formatos de salida de SHAP (list/ndarray/dimensiones diferentes) y normalizamos a una lista de pares (feature, shap_value).
-
-- Respuesta JSON (resumen):
-
-    - `prediction`: texto ("Alto Riesgo" / "Bajo Riesgo")
-    - `probabilty_of_risk`: probabilidad (float)
-    - `interpretacion_xai`: contiene `base_risk_score` y `explicacion_detallada` (lista de factores con `factor`, `impacto_riesgo`, `magnitud_shap`, `valor_input`).
-
-**Mensajes de error devueltos por la API:**
-
-- Si `models/xgb_model.pkl` o `models/feature_names.pkl` no existen, el endpoint devuelve `500` con mensaje indicando que se ejecute `model_train.py`.
-- Si `explainer` no está inicializado, también devuelve `500` y sugiere reentrenar/regenerar artefactos.
-
-#### `streamlit_dashboard.py`
-
-- Tiene dos modos:
-
-    1. **Evaluación Global:** carga `data/synthetic_test_set.csv`, calcula métricas (AUC, F1), muestra matriz de confusión y gráfico de importancia global calculado con SHAP.
-    2. **Predicción Local:** toma un caso aleatorio del dataset original (obtenido desde UCI), lo convierte a tipos nativos, lo envía a `POST /predict_risk/` y muestra la explicación local (gráfico tipo barra) basada en la respuesta.
-
-- `API_URL` por defecto: `http://127.0.0.1:8000/predict_risk/` (asegúrate de que la API esté en ese host/puerto).
-
-<a name="api"></a>
-### 7. API: `/predict_risk/` (documentación)
-
-#### Esquema (simplificado) - Campos aceptados
-
-El Pydantic `CreditData` incluye los siguientes campos (tipos):
-
-- `checking_status`: string
-- `duration`: int
-- `credit_history`: string
-- `purpose`: string
-- `credit_amount`: int
-- `savings_status`: string
-- `employment`: string
-- `installment_commitment`: int
-- `personal_status`: string
-- `other_parties`: string
-- `residence_since`: int
-- `property_magnitude`: string
-- `age`: int
-- `other_payment_plans`: string
-- `housing`: string
-- `existing_credits`: int
-- `job`: string
-- `num_dependencies`: int
-- `own_telephone`: string
-- `foreign_worker`: string
-
-> Estos campos están definidos en `predict_api.py` y se esperan exactamente esos nombres en el JSON de entrada.
-
-#### Ejemplo de petición (cURL)
-
-```bash
-curl -s -X POST "http://127.0.0.1:8000/predict_risk/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "checking_status": "no_checking",
-    "duration": 12,
-    "credit_history": "critical/other",
-    "purpose": "radio/television",
-    "credit_amount": 5000,
-    "savings_status": "no_savings",
-    "employment": "unemployed",
-    "installment_commitment": 4,
-    "personal_status": "male single",
-    "other_parties": "none",
-    "residence_since": 4,
-    "property_magnitude": "real estate",
-    "age": 35,
-    "other_payment_plans": "none",
-    "housing": "own",
-    "existing_credits": 1,
-    "job": "skilled",
-    "num_dependents": 1,
-    "own_telephone": "yes",
-    "foreign_worker": "no"
-  }'
-```
-
-#### Ejemplo simplificado de respuesta (JSON)
-
-```json
-{
-  "prediction": "Bajo Riesgo (No Impago)",
-  "probability_of_risk": 0.1234,
-  "interpretacion_xai": {
-    "base_risk_score": 0.3456,
-    "explicacion_detallada": [
-      {
-        "factor": "age",
-        "impacto_riesgo": "Reduce",
-        "magnitud_shap": -0.12,
-        "valor_input": 35
-      },
-      {
-        "factor": "credit_amount",
-        "impacto_riesgo": "Aumenta",
-        "magnitud_shap": 0.08,
-        "valor_input": 5000
-      }
-    ]
-  },
-  "status": "succes",
-}
-```
-
-<a name="datos"></a>
-### 8. Datos y artefactos generados
-
-- `models/xgb_model.pkl` - modelo serializado con `joblib`. Contiene el estimador XGBoost entrenado.
-- `models/feature_names.pkl` - lista de nombres de columnas tras el _one-hot encoding_. Es **fundamental** para que la API construya correctamente las filas de entrada.
-- `data/synthetic_test_set.csv` - conjunto sintético _balanceado_ mediante SMOTE, utilizado por el dashboard para métricas y visualizaciones.
-- `artifacts/` _(opcional)_ - carpeta sugerida para guardar:
-  
-  - `training_metrics.json`: métricas del entrenamiento (AUC, accuracy, recall, precisión, etc.).
-  - `preproccesing_pipeline.joblib`: si se externaliza el preprocesado mediante un `Pipeline` de scikit-learn.
-
-**Recomendaciones:**
-
-- Los modelos pueden ocupar entre 1-50 MB según parámetros del XGBoost.
-- Guarda un fichero de hashes (por ejemplo `artifacts/checksums.txt`) para trazabilidad.
-
-<a name="test-val"></a>
-### 9. Pruebas y validación
-#### 9.1. Tests recomendados
-
-**Unit tests (pytest):**
-
-- `test_preprocess_input`: comprobar que convierte tipos, rellena columnas faltantes y preserva el orden de `feature_names`.
-- `test_api_schema`: usar `TestClient` de FastAPI para validar:
-
-    - ✅ Petición válida → código 200 y claves esperadas. 
-    - ❌ Campos ausentes → código 422 (validación Pydantic).
-- `test_shap_format`: verificar que la salida de SHAP se normaliza correctamente.
-
-**Integration tests:**
-
-- Levantar la API temporalmente (puerto 9000) y que `streamlit_dashboard` consuma sus respuestas.
-- Mockear respuestas SHAP en CI/CD si se quiere rapidez.
-
-**E2E tests (opcional):**
-
-- Orquestar con `docker-compose` la API y el dashboard, hacer un `POST /predict_risk/` y validar la respuesta completa.
-
-#### 9.2. Métricas recomendadas
-
-- Usar `random_state` fijo en `train_test_split`, `XGBoost` y `SMOTE`.
-- Verificar `requirements.txt` con dependencias exactas (`pip freeze`)
-- Automatizar pasos en un `Makefile` o dentro de `run_all.py`.
-
-<a name="problemas"></a>
-### 10. Problemas comunes y soluciones
-#### 10.1. Artefactos no encontrados
-
-**Error:** `FileNotFoundError` al abrir `xgb_model.pkl`.
-
-**Solución:** ejecutar `python model_train.py` o revisar rutas absolutas.
-
-#### 10.2. Columnas incosistentes
-
-**Causa:** diferencias tras `get_dummies` entre entrenamiento e inferencia.
-
-**Solución:** usar
-
-```python
-df = df.reindex(columns=feature_names, fill_value=0)
-```
-o guarda un `Pipeline` con el mismo transformador.
-
-#### 10.3. SHAP lento o incompatible
-
-**Causa:** modelo grande o `TreeExplainer` sin `background`.
-
-**Solución:**
-
-- Guardar el explainer (`explainer.joblib`) ya inicializado.
-- Limitar el número de _features_ visualizadas.
-
-#### 10.4. Latencia alta en API
-
-**Solución:**
-
-- Ejecutar `uvicorn` con varios workers (`--workers 4`).
-- Poner NGINX como proxy inverso y cachear respuestas.
-
-#### 10.5. Problemas CORS o de puerto
-
-**Causa:** el dashboard (Streamlit) y la API están en distintos orígenes.
-
-**Solución:**
-
-Agregar en `predict_api.py`:
-```python
-from fastapi.middleware.cors import CORSMiddleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8501"],
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
-```
-
-<a name="extensiones"></a>
-### 11. Extensiones y buenas prácticas
-
-- **Dockerización:**
-
-```dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY . /app
-RUN pip install -r requirements.txt
-CMD ["uvicorn", "predict_api:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-- **docker-compose:** para levantar API + dashboard conjuntamente.
-- **Configuración:** mover variables (puertos, rutas, seeds) a `.env` o `config.py`.
-- **Monitorización:** logs JSON, métricas Prometheus, trazas OpenTelemetry.
-- **Auditoría de sesgos:** comparar métricas por subgrupos (edad, empleo, género) usando SHAP para interpretar desigualdades.
+## Roadmap
+
+- [x] Phase 1: Package structure, shared preprocessing, config, tests
+- [x] Phase 2: Auth, rate limiting, Prometheus metrics, structured logging, Docker
+- [x] Phase 3: React + TypeScript dashboard, evaluation API
+- [x] Phase 4: MLflow, YAML config, GitHub Actions CI/CD, Kubernetes manifests
+- [x] Phase 5: Drift detection, alerting rules, OpenTelemetry tracing

@@ -1,0 +1,23 @@
+# infra/k8s/configmap.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: credit-risk-config
+  namespace: credit-risk
+  labels:
+    app.kubernetes.io/name: credit-risk-api
+    app.kubernetes.io/part-of: credit-risk-xai
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+  API_WORKERS: "4"
+  API_RELOAD: "false"
+  API_LOG_FORMAT: "json"
+  API_LOG_LEVEL: "info"
+  API_RATE_LIMIT: "120/minute"
+  API_RATE_LIMIT_ENABLED: "true"
+  API_CORS_ORIGINS: '["https://dashboard.example.com"]'
+  MODEL_DIR: "/app/models"
+  DATA_DIR: "/app/data"
+  MLFLOW_ENABLED: "false"
+  SHAP_SIGNIFICANCE_THRESHOLD: "0.001"

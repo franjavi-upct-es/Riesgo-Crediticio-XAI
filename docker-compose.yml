@@ -1,0 +1,120 @@
+# docker-compose.yml
+#
+# Full local development stack for Credit Risk XAI.
+#
+# Services:
+#   api          — FastAPI prediction service (port 8000)
+#   dashboard    — React + TypeScript frontend (port 5173)
+#   prometheus   — Metrics collection + alerting rules (port 9090)
+#   alertmanager — Alert routing and notification (port 9093)
+#   grafana      — Metrics dashboards (port 3000, admin/admin)
+#   jaeger       — Distributed tracing UI (port 16686)
+#
+# Usage:
+#   docker compose up --build
+#   docker compose down -v
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=2
+      - API_RELOAD=false
+      - API_LOG_FORMAT=json
+      - API_LOG_LEVEL=info
+      - API_RATE_LIMIT=120/minute
+      - API_RATE_LIMIT_ENABLED=true
+      - API_CORS_ORIGINS=["http://localhost:5173","http://localhost:8501"]
+      - OTEL_ENABLED=true
+      - OTEL_SERVICE_NAME=credit-risk-api
+      - OTEL_EXPORTER_ENDPOINT=http://jaeger:4317
+      - DRIFT_BUFFER_SIZE=50
+      - DRIFT_DETECTION_THRESHOLD=0.05
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/alive')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

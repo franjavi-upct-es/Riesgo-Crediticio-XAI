@@ -1,0 +1,74 @@
+# Dockerfile.api
+#
+# Multi-stage build for the Credit Risk XAI API.
+#
+# Stage 1 (builder): installs dependencies into a virtual environment.
+# Stage 2 (runtime): copies only the venv and source — no build tools.
+#
+# Usage:
+#   docker build -f Dockerfile.api -t credit-risk-api .
+#   docker run -p 8000:8000 credit-risk-api
+
+# ---------------------------------------------------------------------------
+# Stage 1: Builder
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy dependency specification first (layer cache optimization)
+COPY pyproject.toml ./
+COPY src/ ./src/
+
+# Install the package into a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir .
+
+# ---------------------------------------------------------------------------
+# Stage 2: Runtime
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+# Security: run as non-root user
+RUN groupadd --gid 1001 appuser && \
+    useradd --uid 1001 --gid appuser --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application source
+COPY src/ ./src/
+
+# Copy model artifacts if they exist (optional — can be mounted at runtime)
+COPY models/ ./models/
+
+# Environment defaults (override at runtime via -e or .env)
+ENV API_HOST=0.0.0.0 \
+    API_PORT=8000 \
+    API_WORKERS=2 \
+    API_RELOAD=false \
+    API_LOG_FORMAT=json \
+    API_LOG_LEVEL=info \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Expose the API port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/alive')" || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Run with uvicorn
+CMD ["python", "-m", "uvicorn", "api.app:app", \
+     "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

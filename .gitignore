@@ -1,5 +1,7 @@
+# credit-risk-xai/.gitignore
+
 # ================================
-# Python general
+# Python
 # ================================
 __pycache__/
 *.py[cod]
@@ -10,79 +12,68 @@ __pycache__/
 dist/
 build/
 .eggs/
+*.whl
 
 # ================================
-# Entornos virtuales
+# Virtual environments
 # ================================
 .venv/
 venv/
 ENV/
 env/
-env.bak/
-*.env
+
+# ================================
+# Environment and secrets
+# ================================
+.env
 *.envrc
 
 # ================================
-# Archivos temporales / caché
-# ================================
-*.log
-*.tmp
-*.bak
-*.swp
-*.swo
-*.sqlite3
-*.db
-*.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.ipynb_checkpoints
-
-# ================================
-# Modelos, artefactos y datos
+# Generated artifacts (reproducible via `make train`)
 # ================================
 models/
 data/
 artifacts/
-*.pkl
-*.joblib
-*.csv
-*.xlsx
-*.parquet
-*.json
-
-# (Descomenta si quieres subir solo scripts y no resultados)
-# !models/README.md
-# !data/README.md
+mlruns/
+!src/data
 
 # ================================
-# Streamlit & FastAPI
+# Test and coverage output
 # ================================
-.streamlit/
-# Logs o configuración local
-logs/
-*.uvicorn.log
-*.streamlit.log
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
 
 # ================================
-# Archivos del sistema
+# Type checking and linting
+# ================================
+.mypy_cache/
+.ruff_cache/
+
+# ================================
+# IDE / Editor
+# ================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+
+# ================================
+# OS
 # ================================
 .DS_Store
-*.tmp
-*.bak
-*.orig
+Thumbs.db
 
 # ================================
-# Archivos de dependencias
+# Docker
 # ================================
-# (Ignora entornos automáticos de pip)
-pip-wheel-metadata/
-__pypackages__/
-
-# ================================
-# Archivos de Docker y CI/CD
-# ================================
-*.tar
-*.gz
-*.zip
 docker-compose.override.yml
+
+# ================================
+# Node (dashboard)
+# ================================
+node_modules/
+dashboard/dist/
+dashboard/.cache/
