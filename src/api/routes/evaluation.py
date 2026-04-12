@@ -49,7 +49,7 @@ def _load_evaluation(dataset_id: str) -> dict[str, Any]:
 
     _cached_evaluations[dataset_id] = data
     logger.info("evaluation_metrics_loaded", dataset_id=dataset_id, path=str(path))
-    return data
+    return dict(data)
 
 
 def clear_evaluation_cache(dataset_id: str | None = None) -> None:
@@ -93,7 +93,7 @@ def get_confusion_matrix(
     """Return the confusion matrix with labels."""
     ds = _resolve_dataset(dataset_id)
     try:
-        return _load_evaluation(ds)["confusion_matrix"]
+        return dict(_load_evaluation(ds)["confusion_matrix"])
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="Evaluation data not available.") from None
 

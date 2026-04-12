@@ -43,6 +43,7 @@ def configure_logging() -> None:
         structlog.processors.StackInfoRenderer(),
     ]
 
+    renderer: structlog.types.Processor
     if settings.api.log_format == "json":
         renderer = structlog.processors.JSONRenderer()
     else:
@@ -50,12 +51,12 @@ def configure_logging() -> None:
 
     structlog.configure(
         processors=[
-            *shared_processors,
+            *shared_processors,  # type: ignore[list-item]
             structlog.processors.format_exc_info,
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(settings.api.log_level)
+            structlog.get_level_from_name(settings.api.log_level)  # type: ignore[arg-type, operator]
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),

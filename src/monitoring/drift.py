@@ -195,7 +195,8 @@ class DriftDetector:
 
             # Use KS test for all features (post one-hot encoding, all numeric)
             try:
-                stat, p_value = stats.ks_2samp(ref_col, cur_col)
+                ks_result = stats.ks_2samp(ref_col, cur_col)
+                stat, p_value = float(ks_result.statistic), float(ks_result.pvalue)
             except Exception:
                 stat, p_value = 0.0, 1.0
 
@@ -218,11 +219,11 @@ class DriftDetector:
         pred_drifted = False
         if self._ref_predictions is not None and len(self._ref_predictions) > 0:
             try:
-                _, pred_p_value = stats.ks_2samp(
+                ks_pred = stats.ks_2samp(
                     self._ref_predictions.astype(float),
                     current_predictions,
                 )
-                pred_p_value = float(pred_p_value)
+                pred_p_value = float(ks_pred.pvalue)
                 pred_drifted = bool(pred_p_value < self._threshold)
             except Exception:
                 pred_p_value = 1.0

@@ -100,7 +100,7 @@ def compute_and_save_evaluation(
             {"feature": name, "importance": round(float(val), 6)}
             for name, val in zip(feature_names, mean_abs_shap)
         ],
-        key=lambda x: x["importance"],
+        key=lambda x: float(str(x["importance"])),
         reverse=True,
     )
 
@@ -134,8 +134,8 @@ def compute_and_save_evaluation(
     logger.info(
         "evaluation_saved",
         path=str(out),
-        auc=result["metrics"]["auc"],
-        f1=result["metrics"]["f1"],
+        auc=result["metrics"]["auc"],  # type: ignore[index]
+        f1=result["metrics"]["f1"],  # type: ignore[index]
     )
 
     return result

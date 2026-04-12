@@ -43,8 +43,9 @@ limiter = Limiter(
 )
 
 
-def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+def _rate_limit_exceeded_handler(request: Request, exc: Exception) -> JSONResponse:
     """Custom handler for rate limit violations."""
+    detail = getattr(exc, "detail", str(exc))
     logger.warning(
         "rate_limit_exceeded",
         client=request.client.host if request.client else "unknown",
@@ -53,10 +54,10 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JS
     return JSONResponse(
         status_code=429,
         content={
-            "detail": f"Rate limit exceeded: {exc.detail}",
-            "retry_after": str(exc.detail),
+            "detail": f"Rate limit exceeded: {detail}",
+            "retry_after": str(detail),
         },
-        headers={"Retry-After": str(exc.detail)},
+        headers={"Retry-After": str(detail)},
     )
 
 

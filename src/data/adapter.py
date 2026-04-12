@@ -197,7 +197,7 @@ def _extract_target(y_df: pd.DataFrame, schema: DatasetSchema) -> pd.Series:
     # Apply value mapping if defined
     if schema.target.mapping:
         # Build a mapping with flexible key types (int/str matching)
-        mapping = {}
+        mapping: dict[str | int | float, int] = {}
         for k, v in schema.target.mapping.items():
             mapping[k] = v
             # Also try numeric conversion for robustness

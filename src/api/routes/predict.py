@@ -7,6 +7,7 @@ Falls back to the default dataset when no ID is specified.
 """
 
 import time
+from typing import Literal, cast
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -144,7 +145,7 @@ async def predict_risk(
         factors = [
             ShapFactorResponse(
                 factor=f.feature,
-                risk_impact=f.impact,
+                risk_impact=cast("Literal['increases', 'reduces']", f.impact),
                 shap_magnitude=f.shap_value,
                 input_value=f.input_value,
             )

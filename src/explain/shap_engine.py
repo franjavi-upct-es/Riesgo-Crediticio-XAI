@@ -200,7 +200,7 @@ def _to_native(value: object) -> float | int | str:
     if isinstance(value, np.floating):
         return float(value)
     if isinstance(value, np.ndarray):
-        return value.tolist()
+        return value.tolist()  # type: ignore[no-any-return]
     if isinstance(value, np.generic):
-        return value.item()
-    return value
+        return value.item()  # type: ignore[no-any-return]
+    return value  # type: ignore[return-value]

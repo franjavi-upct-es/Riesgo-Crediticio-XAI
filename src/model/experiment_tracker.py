@@ -137,5 +137,5 @@ class ExperimentTracker:
     def run_id(self) -> str | None:
         """The current MLflow run ID, or None."""
         if self._run:
-            return self._run.info.run_id
+            return str(self._run.info.run_id)
         return None

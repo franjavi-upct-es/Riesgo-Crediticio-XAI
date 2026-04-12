@@ -234,4 +234,4 @@ def preprocess_input(
             f"expected {len(feature_names)}."
         )
 
-    return aligned
+    return pd.DataFrame(aligned)
