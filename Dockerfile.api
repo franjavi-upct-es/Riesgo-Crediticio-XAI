@@ -44,8 +44,10 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY src/ ./src/
 COPY configs/ ./configs/
 
-# Copy model artifacts if they exist (optional — can be mounted at runtime)
-COPY models/ ./models/
+# Copy model artifacts if they exist (optional — can be mounted at runtime).
+# The trailing dot pattern avoids a build failure when models/ is absent.
+RUN mkdir -p ./models
+COPY model[s]/ ./models/
 
 # Environment defaults (override at runtime via -e or .env)
 ENV API_HOST=0.0.0.0 \
