@@ -1,29 +1,45 @@
 // dashboard/src/types/api.ts
 
-// --- Prediction ---
+// --- Datasets ---
 
-export interface CreditDataInput {
-  checking_status: string;
-  duration: number;
-  credit_history: string;
-  purpose: string;
-  credit_amount: number;
-  saving_status: string;
-  employment: string;
-  installment_commitment: number;
-  personal_status: string;
-  other_parties: string;
-  residence_since: number;
-  property_magnitude: string;
-  age: number;
-  other_payment_plans: string;
-  housing: string;
-  existing_credits: number;
-  job: string;
-  num_dependents: number;
-  own_telephone: string;
-  foreign_worker: string;
+export interface FeatureDefinition {
+  name: string;
+  type: "numerical" | "categorical";
+  description: string;
+  options: string[];
+  min: number | null;
+  max: number | null;
+  protected: boolean;
+  default_value: string | number;
 }
+
+export interface DatasetSchemaResponse {
+  id: string;
+  name: string;
+  description: string;
+  features: FeatureDefinition[];
+  target: {
+    labels: Record<number, string>;
+  };
+}
+
+export interface DatasetSummary {
+  id: string;
+  name: string;
+  description: string;
+  n_features: number;
+  n_categorical: number;
+  n_numerical: number;
+  n_protected: number;
+  target_labels: Record<number, string>;
+}
+
+export interface DatasetsListResponse {
+  datasets: DatasetSummary[];
+  count: number;
+}
+
+// --- Prediction ---
 
 export interface ShapFactor {
   factor: string;
@@ -95,4 +111,5 @@ export interface HealthResponse {
   status: "healthy" | "degraded";
   model_loaded: boolean;
   version: string;
+  loaded_datasets: string[];
 }

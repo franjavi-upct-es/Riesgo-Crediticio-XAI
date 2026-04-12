@@ -1,0 +1,155 @@
+# configs/datasets/german_credit.yml
+#
+# Schema definition for the UCI Statlog German Credit dataset (ID 144).
+# Used by the DatasetAdapter to normalize, validate, and serve this dataset.
+
+id: german_credit
+name: German Credit (UCI Statlog)
+description: >
+  Classic credit risk dataset from the UCI Machine Learning Repository.
+  1000 applicants with 20 features. Binary classification: good/bad credit risk.
+source:
+  type: uci
+  uci_dataset_id: 144
+  column_mapping:
+    Attribute1: checking_status
+    Attribute2: duration
+    Attribute3: credit_history
+    Attribute4: purpose
+    Attribute5: credit_amount
+    Attribute6: savings_status
+    Attribute7: employment
+    Attribute8: installment_commitment
+    Attribute9: personal_status
+    Attribute10: other_parties
+    Attribute11: residence_since
+    Attribute12: property_magnitude
+    Attribute13: age
+    Attribute14: other_payment_plans
+    Attribute15: housing
+    Attribute16: existing_credits
+    Attribute17: job
+    Attribute18: num_dependents
+    Attribute19: own_telephone
+    Attribute20: foreign_worker
+
+target:
+  column: risk_flag
+  mapping:
+    1: 0  # Good credit → 0
+    2: 1  # Bad credit  → 1
+  positive_label: 1
+  labels:
+    0: "No Default"
+    1: "Default"
+
+features:
+  - name: checking_status
+    type: categorical
+    description: Status of the existing checking account
+    options: ["<0", "0<=X<200", ">=200", "no_checking"]
+
+  - name: duration
+    type: numerical
+    description: Credit duration in months
+    min: 1
+    max: 120
+
+  - name: credit_history
+    type: categorical
+    description: Credit history category
+    options: ["no credits/all paid", "all paid", "existing paid", "delayed previously", "critical/other"]
+
+  - name: purpose
+    type: categorical
+    description: Purpose of the credit
+    options: ["new car", "used car", "furniture/equipment", "radio/television", "domestic appliance", "repairs", "education", "retraining", "business", "other"]
+
+  - name: credit_amount
+    type: numerical
+    description: Credit amount in currency units
+    min: 1
+    max: 100000000
+
+  - name: savings_status
+    type: categorical
+    description: Savings account/bonds status
+    options: ["<100", "100<=X<500", "500<=X<1000", ">=1000", "no_savings"]
+
+  - name: employment
+    type: categorical
+    description: Employment duration category
+    options: ["unemployed", "<1", "1<=X<4", "4<=X<7", ">=7"]
+
+  - name: installment_commitment
+    type: numerical
+    description: Installment rate as percentage of disposable income
+    min: 1
+    max: 4
+
+  - name: personal_status
+    type: categorical
+    description: Personal status and sex
+    options: ["male div/sep", "female div/dep/mar", "male single", "male mar/wid"]
+    protected: true
+
+  - name: other_parties
+    type: categorical
+    description: Other debtors or guarantors
+    options: ["none", "co-applicant", "guarantor"]
+
+  - name: residence_since
+    type: numerical
+    description: Present residence since (years)
+    min: 1
+    max: 4
+
+  - name: property_magnitude
+    type: categorical
+    description: Property type
+    options: ["real estate", "life insurance", "car", "no known property"]
+
+  - name: age
+    type: numerical
+    description: Age in years
+    min: 18
+    max: 120
+    protected: true
+
+  - name: other_payment_plans
+    type: categorical
+    description: Other installment plans
+    options: ["bank", "stores", "none"]
+
+  - name: housing
+    type: categorical
+    description: Housing status
+    options: ["rent", "own", "for free"]
+
+  - name: existing_credits
+    type: numerical
+    description: Number of existing credits at this bank
+    min: 1
+    max: 10
+
+  - name: job
+    type: categorical
+    description: Job category
+    options: ["unemp/unskilled non res", "unskilled resident", "skilled", "high qualif/self emp/mgmt"]
+
+  - name: num_dependents
+    type: numerical
+    description: Number of dependents
+    min: 1
+    max: 10
+
+  - name: own_telephone
+    type: categorical
+    description: Whether the applicant has a telephone registered
+    options: ["none", "yes"]
+
+  - name: foreign_worker
+    type: categorical
+    description: Whether the applicant is a foreign worker
+    options: ["yes", "no"]
+    protected: true

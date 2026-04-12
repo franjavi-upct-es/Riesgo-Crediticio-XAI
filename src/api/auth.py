@@ -1,3 +1,4 @@
+# src/api/auth.py
 """API key authentication.
 
 Provides a FastAPI dependency that validates API key credentials

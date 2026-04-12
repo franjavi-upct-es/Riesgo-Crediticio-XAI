@@ -1,5 +1,5 @@
 # tests/unit/test_drift.py
-"""Unit tests for monitoring.drift.
+"""Unit tests for src.monitoring.drift.
 
 Verifies buffer management, KS test drift detection, Prometheus gauge
 updates, and edge cases (empty buffer, identical distributions, etc.).
@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+
 from src.monitoring.drift import DriftDetector, DriftReport
 
 
@@ -108,7 +109,9 @@ class TestDriftAnalysis:
         assert report.prediction_drift_pvalue < 0.05
         assert report.prediction_drifted is True
 
-    def test_no_prediction_drift_with_similar_distribution(self, detector, reference_predictions):
+    def test_no_prediction_drift_with_similar_distribution(
+        self, detector, reference_predictions
+    ):
         """When predictions match reference distribution, no drift."""
         rng = np.random.RandomState(99)
         for _ in range(20):

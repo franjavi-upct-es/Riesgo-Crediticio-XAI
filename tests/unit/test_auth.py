@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
+
 from src.api.auth import verify_api_key
 
 
@@ -28,7 +29,9 @@ class TestVerifyApiKey:
         """When API_KEY is None, even a provided key is ignored."""
         with patch("src.api.auth.settings") as mock_settings:
             mock_settings.api.api_key = None
-            result = await verify_api_key(header_key="some-key", query_key=None)
+            result = await verify_api_key(
+                header_key="some-key", query_key=None
+            )
             assert result is None
 
     @pytest.mark.asyncio
@@ -36,7 +39,9 @@ class TestVerifyApiKey:
         """Correct key in X-API-Key header returns the key."""
         with patch("src.api.auth.settings") as mock_settings:
             mock_settings.api.api_key = "secret-123"
-            result = await verify_api_key(header_key="secret-123", query_key=None)
+            result = await verify_api_key(
+                header_key="secret-123", query_key=None
+            )
             assert result == "secret-123"
 
     @pytest.mark.asyncio
@@ -44,7 +49,9 @@ class TestVerifyApiKey:
         """Correct key in api_key query parameter returns the key."""
         with patch("src.api.auth.settings") as mock_settings:
             mock_settings.api.api_key = "secret-123"
-            result = await verify_api_key(header_key=None, query_key="secret-123")
+            result = await verify_api_key(
+                header_key=None, query_key="secret-123"
+            )
             assert result == "secret-123"
 
     @pytest.mark.asyncio
@@ -52,7 +59,9 @@ class TestVerifyApiKey:
         """When both header and query are provided, header wins."""
         with patch("src.api.auth.settings") as mock_settings:
             mock_settings.api.api_key = "correct"
-            result = await verify_api_key(header_key="correct", query_key="wrong")
+            result = await verify_api_key(
+                header_key="correct", query_key="wrong"
+            )
             assert result == "correct"
 
     @pytest.mark.asyncio

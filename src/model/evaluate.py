@@ -63,11 +63,11 @@ def compute_and_save_evaluation(
     # --- Confusion matrix ---
     cm = confusion_matrix(y_test, y_pred).tolist()
 
-    # --- ROC curve (sample to ~100 points for JSON size) ---
-    fpr, tpr, _ = roc_curve(y_test, y_proba)
+    # --- ROC curve (sampled to ~100 points for JSON size) ---
+    fpr, tpr, _thresholds = roc_curve(y_test, y_proba)
     step = max(1, len(fpr) // 100)
     roc_data = [
-        {"fpr": round(float(fpr[i]), 4), "top": round(float(tpr[i]), 4)}
+        {"fpr": round(float(fpr[i]), 4), "tpr": round(float(tpr[i]), 4)}
         for i in range(0, len(fpr), step)
     ]
 
@@ -88,9 +88,17 @@ def compute_and_save_evaluation(
     shap_values_raw = explainer.shap_values(X_test)
 
     if isinstance(shap_values_raw, list):
-        sv = np.asarray(shap_values_raw[1] if len(shap_values_raw) > 1 else shap_values_raw[0])
+        sv = np.asarray(
+            shap_values_raw[1]
+            if len(shap_values_raw) > 1
+            else shap_values_raw[0]
+        )
     elif isinstance(shap_values_raw, np.ndarray) and shap_values_raw.ndim == 3:
-        sv = shap_values_raw[1] if shap_values_raw.shape[0] > 1 else shap_values_raw[0]
+        sv = (
+            shap_values_raw[1]
+            if shap_values_raw.shape[0] > 1
+            else shap_values_raw[0]
+        )
     else:
         sv = np.asarray(shap_values_raw)
 
@@ -127,7 +135,7 @@ def compute_and_save_evaluation(
     }
 
     # Persist
-    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w") as f:
         json.dump(result, f, indent=2)
 

@@ -1,8 +1,14 @@
 // dashboard/src/hooks/useApi.ts
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { fetchFullEvaluation, fetchHealth, postPrediction } from "@/api/client";
-import type { CreditDataInput } from "@/types/api";
+import {
+  fetchDatasetSchema,
+  fetchDatasets,
+  fetchFullEvaluation,
+  fetchHealth,
+  fetchRandomSample,
+  postPrediction,
+} from "@/api/client";
 
 export function useHealth() {
   return useQuery({
@@ -10,6 +16,30 @@ export function useHealth() {
     queryFn: fetchHealth,
     refetchInterval: 30_000,
     retry: 1,
+  });
+}
+
+export function useDatasets() {
+  return useQuery({
+    queryKey: ["datasets"],
+    queryFn: fetchDatasets,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useDatasetSchema(datasetId: string | null) {
+  return useQuery({
+    queryKey: ["dataset-schema", datasetId],
+    queryFn: () => fetchDatasetSchema(datasetId!),
+    enabled: !!datasetId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useRandomSample(datasetId: string | null) {
+  return useMutation({
+    mutationFn: () => fetchRandomSample(datasetId!),
   });
 }
 
@@ -24,6 +54,12 @@ export function useEvaluation() {
 
 export function usePrediction() {
   return useMutation({
-    mutationFn: (data: CreditDataInput) => postPrediction(data),
+    mutationFn: ({
+      data,
+      datasetId,
+    }: {
+      data: Record<string, unknown>;
+      datasetId?: string;
+    }) => postPrediction(data, datasetId),
   });
 }

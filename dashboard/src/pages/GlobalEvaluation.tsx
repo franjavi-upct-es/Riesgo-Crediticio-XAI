@@ -26,14 +26,7 @@ export default function GlobalEvaluation() {
     );
   }
 
-  const {
-    metrics,
-    confusion_matrix,
-    roc_curve,
-    shap_importance,
-    prediction_distribution,
-    dataset_info,
-  } = data;
+  const { metrics, confusion_matrix, roc_curve, shap_importance, prediction_distribution, dataset_info } = data;
 
   return (
     <div className="space-y-6">
@@ -43,9 +36,7 @@ export default function GlobalEvaluation() {
           Global evaluation
         </h2>
         <p className="mt-1 text-sm text-accent-muted">
-          Model performance on the synthetic balanced test set (
-          {dataset_info.n_samples.toLocaleString()} samples,{" "}
-          {dataset_info.n_features} features)
+          Model performance on the synthetic balanced test set ({dataset_info.n_samples.toLocaleString()} samples, {dataset_info.n_features} features)
         </p>
       </div>
 
@@ -55,13 +46,7 @@ export default function GlobalEvaluation() {
           label="AUC-ROC"
           value={metrics.auc.toFixed(4)}
           icon={<TrendingUp size={16} />}
-          variant={
-            metrics.auc > 0.8
-              ? "success"
-              : metrics.auc > 0.6
-                ? "info"
-                : "danger"
-          }
+          variant={metrics.auc > 0.8 ? "success" : metrics.auc > 0.6 ? "info" : "danger"}
         />
         <MetricCard
           label="F1 score"

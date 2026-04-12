@@ -1,0 +1,22 @@
+# .dockerignore
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.md
+!README.md
+tests/
+data/
+artifacts/
+.env
+*.log
+node_modules/
+dashboard/dist/

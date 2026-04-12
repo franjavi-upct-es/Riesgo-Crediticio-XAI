@@ -1,17 +1,29 @@
 # src/model/registry.py
-"""Model artifact loading and validation.
+"""Multi-model artifact loading and validation.
 
-Provides a clean interface for loading trained model artifacts with
-proper error handling and validation. Designed to support future model
-versioning and registry integration (e.g., MLflow).
+Supports loading trained model artifacts for multiple datasets.
+Each dataset has its own model directory containing the trained
+classifier, feature names, and preprocessing pipeline.
+
+Directory layout:
+    models/
+    ├── german_credit/
+    │   ├── model.pkl
+    │   ├── feature_names.pkl
+    │   └── pipeline.pkl
+    ├── lending_club/
+    │   ├── model.pkl
+    │   ├── feature_names.pkl
+    │   └── pipeline.pkl
+    └── ...
 """
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import joblib
 import structlog
-import xgboost as xgb
 
 from src.config import settings
 
@@ -20,17 +32,21 @@ logger = structlog.get_logger(__name__)
 
 @dataclass(frozen=True)
 class ModelArtifacts:
-    """Inmmutable container for loaded model artifacts.
+    """Immutable container for loaded model artifacts.
 
     Attributes:
-        model: The trained XGBoost classifier.
+        model: The trained classifier (XGBoost or any sklearn-compatible).
         feature_names: Ordered list of feature column names after encoding.
+        pipeline: Fitted sklearn ColumnTransformer (or None for legacy).
         model_path: Filesystem path from which the model was loaded.
+        dataset_id: Identifier of the dataset this model was trained on.
     """
 
-    model: xgb.XGBClassifier
+    model: Any
     feature_names: list[str]
+    pipeline: Any | None
     model_path: Path
+    dataset_id: str
 
     def validate(self) -> None:
         """Run basic sanity checks on loaded artifacts.
@@ -54,30 +70,48 @@ class ModelArtifacts:
 
         logger.info(
             "model_artifacts_validated",
+            dataset_id=self.dataset_id,
             n_features=n_saved_features,
             model_path=str(self.model_path),
+            has_pipeline=self.pipeline is not None,
         )
 
 
 def load_model_artifacts(
+    dataset_id: str | None = None,
     model_dir: Path | None = None,
 ) -> ModelArtifacts:
     """Load trained model and feature names from disk.
 
+    Supports two directory layouts:
+    1. Multi-dataset: models/{dataset_id}/model.pkl
+    2. Legacy flat:   models/xgb_model.pkl (backward compat)
+
     Args:
-        model_dir: Directory contianing model artifacts.
-            Defaults to the path configured in settings.
+        dataset_id: Dataset identifier. If None, uses legacy flat layout.
+        model_dir: Root models directory. Defaults to settings.model.dir.
 
-        Returns:
-            Validated ModelArtifacts instance.
+    Returns:
+        Validated ModelArtifacts instance.
 
-        Raises:
-            FileNotFoundError: If any required artifact file is missing.
-            ValueError: If loaded artifacts fail validation.
+    Raises:
+        FileNotFoundError: If required artifact files are missing.
+        ValueError: If loaded artifacts fail validation.
     """
     base_dir = model_dir or settings.model.dir
-    model_path = base_dir / settings.model.filename
-    features_path = base_dir / settings.model.feature_names_filename
+
+    if dataset_id:
+        # Multi-dataset layout
+        ds_dir = base_dir / dataset_id
+        model_path = ds_dir / "model.pkl"
+        features_path = ds_dir / "feature_names.pkl"
+        pipeline_path = ds_dir / "pipeline.pkl"
+    else:
+        # Legacy flat layout (backward compat)
+        model_path = base_dir / settings.model.filename
+        features_path = base_dir / settings.model.feature_names_filename
+        pipeline_path = base_dir / "pipeline.pkl"
+        dataset_id = "german_credit"  # Default assumption
 
     for path, label in [
         (model_path, "model"),
@@ -89,12 +123,55 @@ def load_model_artifacts(
                 "Run the training pipeline first: credit-risk-train"
             )
 
-    logger.info("loading_model_artifacts", model_dir=str(base_dir))
+    logger.info(
+        "loading_model_artifacts",
+        dataset_id=dataset_id,
+        model_dir=str(base_dir),
+    )
 
     model = joblib.load(model_path)
     feature_names = joblib.load(features_path)
 
-    artifacts = ModelArtifacts(model=model, feature_names=feature_names, model_path=model_path)
+    # Pipeline is optional (legacy models don't have it)
+    pipeline = None
+    if pipeline_path.exists():
+        pipeline = joblib.load(pipeline_path)
+        logger.info("preprocessing_pipeline_loaded", path=str(pipeline_path))
+
+    artifacts = ModelArtifacts(
+        model=model,
+        feature_names=feature_names,
+        pipeline=pipeline,
+        model_path=model_path,
+        dataset_id=dataset_id,
+    )
     artifacts.validate()
 
     return artifacts
+
+
+def list_trained_models(model_dir: Path | None = None) -> list[str]:
+    """List all dataset IDs that have trained model artifacts.
+
+    Args:
+        model_dir: Root models directory. Defaults to settings.model.dir.
+
+    Returns:
+        Sorted list of dataset identifiers with available models.
+    """
+    base_dir = model_dir or settings.model.dir
+    if not base_dir.exists():
+        return []
+
+    trained = []
+    for sub in sorted(base_dir.iterdir()):
+        if sub.is_dir() and (sub / "model.pkl").exists():
+            trained.append(sub.name)
+
+    # Also check for legacy flat layout
+    if (
+        base_dir / settings.model.filename
+    ).exists() and "german_credit" not in trained:
+        trained.insert(0, "german_credit")
+
+    return trained

@@ -37,12 +37,8 @@ def load_uci_dataset() -> tuple[pd.DataFrame, pd.Series]:
             "Check your network connection and the ucimlrepo package."
         ) from exc
 
-    data = dataset.data
-    if data is None or data.features is None or data.targets is None:
-        raise RuntimeError(f"UCI dataset (id={dataset_id}) returned no data.")
-
-    X = data.features.rename(columns=COLUMN_MAPPING)
-    y = data.targets.copy()
+    X = dataset.data.features.rename(columns=COLUMN_MAPPING)
+    y = dataset.data.targets.copy()
 
     y.columns = ["risk_flag"]
     # UCI encoding: 1 = good credit, 2 = bad credit → remap to 0/1

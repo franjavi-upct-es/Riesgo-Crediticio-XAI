@@ -134,7 +134,7 @@ class Settings(BaseSettings):
 
     Usage::
 
-        from config import settings
+        from src.config import settings
 
         model_path = settings.model.model_path
         api_port = settings.api.port

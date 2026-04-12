@@ -86,9 +86,13 @@ class ShapEngine:
             ValueError: If X does not have exactly one row.
         """
         if len(X) != 1:
-            raise ValueError(f"Expected a single-row DataFrame, got {len(X)} rows.")
+            raise ValueError(
+                f"Expected a single-row DataFrame, got {len(X)} rows."
+            )
 
-        threshold = significance_threshold or settings.shap.significance_threshold
+        threshold = (
+            significance_threshold or settings.shap.significance_threshold
+        )
 
         # Compute raw SHAP values
         shap_values_raw = self._explainer.shap_values(X)
@@ -183,7 +187,7 @@ class ShapEngine:
             vals = np.asarray(ev)
             return float(vals[1] if len(vals) > 1 else vals[0])
 
-        return float(ev)  # type: ignore[arg-type]
+        return float(ev)
 
 
 def _to_native(value: object) -> float | int | str:
@@ -202,7 +206,5 @@ def _to_native(value: object) -> float | int | str:
     if isinstance(value, np.ndarray):
         return value.tolist()
     if isinstance(value, np.generic):
-        return value.item()  # type: ignore[return-value]
-    if isinstance(value, (float, int, str)):
-        return value
-    return str(value)
+        return value.item()
+    return value

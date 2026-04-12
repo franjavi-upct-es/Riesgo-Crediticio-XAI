@@ -1,103 +1,155 @@
 # src/api/dependencies.py
 """FastAPI dependency injection providers.
 
-Manages the lifecycle of shared resources (model, explainer, drift
-detector) that are loaded once at startup and injected into route
-handlers via Depends(). This decouples route logic from resource
-management and makes testing straightforward (override the dependency).
+Manages the lifecycle of shared resources (models, explainers, drift
+detectors) for multiple datasets. Each dataset has its own model,
+SHAP engine, and drift detector loaded at startup.
 """
-
-from functools import lru_cache
 
 import pandas as pd
 import structlog
 
 from src.config import settings
 from src.explain.shap_engine import ShapEngine
-from src.model.registry import ModelArtifacts, load_model_artifacts
+from src.model.registry import (
+    ModelArtifacts,
+    list_trained_models,
+    load_model_artifacts,
+)
 from src.monitoring.drift import DriftDetector
 
 logger = structlog.get_logger(__name__)
 
-# Module-level state — populated by lifespan, accessed by dependencies
-_artifacts: ModelArtifacts | None = None
-_shap_engine: ShapEngine | None = None
-_drift_detector: DriftDetector | None = None
+# Module-level state: keyed by dataset_id
+_models: dict[str, ModelArtifacts] = {}
+_shap_engines: dict[str, ShapEngine] = {}
+_drift_detectors: dict[str, DriftDetector] = {}
+_default_dataset_id: str | None = None
 
 
 def initialize_resources() -> None:
-    """Load model artifacts, SHAP engine, and drift detector.
+    """Load model artifacts for all trained datasets.
 
     Called once during application startup (lifespan context).
     """
-    global _artifacts, _shap_engine, _drift_detector
+    global _default_dataset_id
 
-    try:
-        _artifacts = load_model_artifacts()
-        _shap_engine = ShapEngine(_artifacts.model)
-        logger.info(
-            "api_resources_initialized",
-            n_features=len(_artifacts.feature_names),
-        )
-    except FileNotFoundError:
-        logger.warning(
-            "model_artifacts_not_found",
-            detail="API will start but prediction endpoints will return 503.",
-        )
+    trained = list_trained_models()
+    if not trained:
+        # Try legacy flat layout
+        try:
+            artifacts = load_model_artifacts(dataset_id=None)
+            _models[artifacts.dataset_id] = artifacts
+            _shap_engines[artifacts.dataset_id] = ShapEngine(artifacts.model)
+            _default_dataset_id = artifacts.dataset_id
+            logger.info("legacy_model_loaded", dataset_id=artifacts.dataset_id)
+        except FileNotFoundError:
+            logger.warning(
+                "no_models_found",
+                detail="API will start but predictions return 503.",
+            )
+        except Exception:
+            logger.exception("resource_initialization_failed")
         return
 
-    # Initialize drift detector with reference data from synthetic test set
+    for ds_id in trained:
+        try:
+            artifacts = load_model_artifacts(dataset_id=ds_id)
+            _models[ds_id] = artifacts
+            _shap_engines[ds_id] = ShapEngine(artifacts.model)
+
+            if _default_dataset_id is None:
+                _default_dataset_id = ds_id
+
+            # Initialize drift detector
+            _init_drift_detector(ds_id, artifacts)
+
+            logger.info(
+                "dataset_model_loaded",
+                dataset_id=ds_id,
+                n_features=len(artifacts.feature_names),
+            )
+        except Exception:
+            logger.exception("model_load_failed", dataset_id=ds_id)
+
+    logger.info(
+        "all_resources_initialized",
+        loaded_models=list(_models.keys()),
+        default_dataset=_default_dataset_id,
+    )
+
+
+def _init_drift_detector(ds_id: str, artifacts: ModelArtifacts) -> None:
+    """Initialize drift detector for a dataset using its synthetic test set."""
     try:
-        ref_path = settings.data.synthetic_test_path
+        ref_path = settings.data.dir / ds_id / "synthetic_test_set.csv"
+        if not ref_path.exists():
+            # Fallback to legacy path
+            ref_path = settings.data.synthetic_test_path
+
         if ref_path.exists():
             ref_df = pd.read_csv(ref_path)
-            target_col = "risk_flag"
-            X_ref = ref_df.drop(columns=[target_col]) if target_col in ref_df.columns else ref_df
+            target_cols = ["target", "risk_flag", "Risk_Flag"]
+            for tc in target_cols:
+                if tc in ref_df.columns:
+                    ref_df = ref_df.drop(columns=[tc])
+                    break
 
-            # Align reference columns to model's feature names
-            X_ref = X_ref.reindex(columns=_artifacts.feature_names, fill_value=0)
-
-            # Compute reference predictions for prediction drift detection
-            ref_prediction = _artifacts.model.predict_proba(X_ref)[:, 1]
-
-            _drift_detector = DriftDetector(
-                reference_data=X_ref.values,
-                feature_names=_artifacts.feature_names,
-                reference_predictions=ref_prediction,
+            ref_df = ref_df.reindex(
+                columns=artifacts.feature_names, fill_value=0
             )
-        else:
-            logger.warning("drift_reference_data_not_found", path=str(ref_path))
+            ref_predictions = artifacts.model.predict_proba(ref_df)[:, 1]
+
+            _drift_detectors[ds_id] = DriftDetector(
+                reference_data=ref_df.values,
+                feature_names=artifacts.feature_names,
+                reference_predictions=ref_predictions,
+            )
     except Exception:
-        logger.execption("drif_detector_initalization_failed")
+        logger.exception("drift_detector_init_failed", dataset_id=ds_id)
 
 
 def shutdown_resources() -> None:
-    """Clean up resources on application shutdown."""
-    global _artifacts, _shap_engine, _drift_detector
-    _artifacts = None
-    _shap_engine = None
-    _drift_detector = None
+    """Clean up all resources on application shutdown."""
+    global _default_dataset_id
+    _models.clear()
+    _shap_engines.clear()
+    _drift_detectors.clear()
+    _default_dataset_id = None
     logger.info("api_resources_released")
 
 
-def get_model_artifacts() -> ModelArtifacts | None:
-    """Dependency provider for model artifacts."""
-    return _artifacts
-
-
-def get_shap_engine() -> ShapEngine | None:
-    """Dependency provider for the SHAP engine."""
-    return _shap_engine
-
-
-def get_drift_detector() -> DriftDetector | None:
-    """Dependency provider for the drift detector."""
-    return _drift_detector
-
-
-@lru_cache(maxsize=1)
-def get_feature_names() -> list[str] | None:
-    """Cached access to feature names for preprocessing."""
-    if _artifacts is None:
+def get_model_artifacts(
+    dataset_id: str | None = None,
+) -> ModelArtifacts | None:
+    """Get model artifacts for a dataset."""
+    ds_id = dataset_id or _default_dataset_id
+    if ds_id is None:
         return None
-    return _artifacts.feature_names
+    return _models.get(ds_id)
+
+
+def get_shap_engine(dataset_id: str | None = None) -> ShapEngine | None:
+    """Get SHAP engine for a dataset."""
+    ds_id = dataset_id or _default_dataset_id
+    if ds_id is None:
+        return None
+    return _shap_engines.get(ds_id)
+
+
+def get_drift_detector(dataset_id: str | None = None) -> DriftDetector | None:
+    """Get drift detector for a dataset."""
+    ds_id = dataset_id or _default_dataset_id
+    if ds_id is None:
+        return None
+    return _drift_detectors.get(ds_id)
+
+
+def get_loaded_datasets() -> list[str]:
+    """Return list of dataset IDs with loaded models."""
+    return list(_models.keys())
+
+
+def get_default_dataset_id() -> str | None:
+    """Return the default dataset ID."""
+    return _default_dataset_id

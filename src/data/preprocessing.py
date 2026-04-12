@@ -1,24 +1,31 @@
 # src/data/preprocessing.py
-"""Shared preprocessing logic for training and inference.
+"""Schema-driven preprocessing with sklearn Pipeline.
 
-This module is the SINGLE source of truth for feature encoding. Both
-the training pipeline and the prediction API import from here, which
-eliminates train/serve skew by construction.
+Replaces the fragile pd.get_dummies approach with a fitted
+ColumnTransformer that handles unknown categories gracefully
+and carries the feature schema as part of the serialized pipeline.
 
-Key design decision: we use pd.get_dummies with drop_first=True during
-training to produce the canonical feature set, then save the resulting
-column names as `feature_names`. At inference time, we apply the same
-get_dummies call and reindex against the saved feature_names so the
-input always matches the model's expected shape.
+The pipeline is fitted during training and serialized alongside the
+model. At inference time, the same fitted pipeline transforms inputs
+identically — eliminating train/serve skew by construction.
 """
 
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import joblib
 import pandas as pd
 import structlog
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+
+from src.data.schema import DatasetSchema
 
 logger = structlog.get_logger(__name__)
 
-# Mapping from UCI generic attribute names to human-readable names.
-# This is the canonical reference — all modules import from here.
+# Legacy mapping preserved for backward compatibility with existing tests
 COLUMN_MAPPING: dict[str, str] = {
     "Attribute1": "checking_status",
     "Attribute2": "duration",
@@ -42,7 +49,6 @@ COLUMN_MAPPING: dict[str, str] = {
     "Attribute20": "foreign_worker",
 }
 
-# Categorical features that require one-hot encoding.
 CATEGORICAL_FEATURES: list[str] = [
     "checking_status",
     "credit_history",
@@ -60,21 +66,152 @@ CATEGORICAL_FEATURES: list[str] = [
 ]
 
 
-def encode_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply one-hot encoding to categorical columns.
+def build_preprocessing_pipeline(schema: DatasetSchema) -> ColumnTransformer:
+    """Build a sklearn ColumnTransformer from a dataset schema.
 
-    This function is used during training to produce the canonical encoded
-    feature set. The resulting column order defines `feature_names`.
+    Creates an encoder that handles categorical features with
+    OneHotEncoder (unknown categories → all zeros) and passes
+    numerical features through with StandardScaler.
 
     Args:
-        df: DataFrame with raw (pre-encoding) feature columns.
+        schema: The dataset schema defining feature types.
 
     Returns:
-        DataFrame with one-hot encoded categorical features.
+        An unfitted ColumnTransformer ready for .fit().
+    """
+    categorical_cols = schema.categorical_features
+    numerical_cols = schema.numerical_features
+
+    transformers = []
+
+    if numerical_cols:
+        transformers.append(("num", "passthrough", numerical_cols))
+
+    if categorical_cols:
+        transformers.append(
+            (
+                "cat",
+                OneHotEncoder(
+                    sparse_output=False,
+                    handle_unknown="ignore",
+                    drop="first",
+                ),
+                categorical_cols,
+            )
+        )
+
+    pipeline = ColumnTransformer(
+        transformers=transformers,
+        remainder="drop",
+        verbose_feature_names_out=False,
+    )
+
+    logger.info(
+        "preprocessing_pipeline_built",
+        dataset_id=schema.id,
+        n_numerical=len(numerical_cols),
+        n_categorical=len(categorical_cols),
+    )
+
+    return pipeline
+
+
+def fit_and_save_pipeline(
+    pipeline: ColumnTransformer,
+    X: pd.DataFrame,
+    output_path: Path,
+) -> list[str]:
+    """Fit the preprocessing pipeline and save it.
+
+    Args:
+        pipeline: Unfitted ColumnTransformer.
+        X: Training features (raw, before encoding).
+        output_path: Path to save the fitted pipeline.
+
+    Returns:
+        List of output feature names after transformation.
+    """
+    pipeline.fit(X)
+    feature_names = list(pipeline.get_feature_names_out())
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(pipeline, output_path)
+
+    logger.info(
+        "pipeline_fitted_and_saved",
+        path=str(output_path),
+        n_input_features=X.shape[1],
+        n_output_features=len(feature_names),
+    )
+
+    return feature_names
+
+
+def load_pipeline(path: Path) -> ColumnTransformer:
+    """Load a fitted preprocessing pipeline from disk.
+
+    Args:
+        path: Path to the serialized pipeline.
+
+    Returns:
+        The fitted ColumnTransformer.
+
+    Raises:
+        FileNotFoundError: If the pipeline file does not exist.
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Preprocessing pipeline not found: {path}")
+
+    pipeline = joblib.load(path)
+    logger.info("pipeline_loaded", path=str(path))
+    return pipeline
+
+
+def preprocess_with_pipeline(
+    input_dict: dict[str, Any],
+    pipeline: ColumnTransformer,
+    feature_names: list[str],
+) -> pd.DataFrame:
+    """Transform a single prediction input using the fitted pipeline.
+
+    Args:
+        input_dict: Raw input data as a dictionary.
+        pipeline: Fitted ColumnTransformer.
+        feature_names: Expected output feature names.
+
+    Returns:
+        DataFrame with shape (1, n_features) ready for model inference.
+    """
+    input_df = pd.DataFrame([input_dict])
+    transformed = pipeline.transform(input_df)
+
+    result = pd.DataFrame(transformed, columns=feature_names)
+
+    logger.debug(
+        "input_preprocessed_via_pipeline",
+        input_columns=len(input_dict),
+        output_columns=result.shape[1],
+    )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Legacy functions (backward compatibility for existing tests/code)
+# ---------------------------------------------------------------------------
+
+
+def encode_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Legacy: Apply one-hot encoding to categorical columns.
+
+    Preserved for backward compatibility with existing tests and the
+    training pipeline. New code should use build_preprocessing_pipeline().
     """
     categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
     encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-    logger.debug("features_encoded", n_raw=df.shape[1], n_encoded=encoded.shape[1])
+    logger.debug(
+        "features_encoded", n_raw=df.shape[1], n_encoded=encoded.shape[1]
+    )
     return encoded
 
 
@@ -82,37 +219,19 @@ def preprocess_input(
     input_dict: dict,
     feature_names: list[str],
 ) -> pd.DataFrame:
-    """Transform a single prediction input into a model-ready feature vector.
+    """Legacy: Transform a single prediction input using get_dummies.
 
-    Applies the same encoding used during training and aligns the result
-    with the model's expected feature order. Missing columns are filled
-    with 0 (the absence indicator for one-hot features).
-
-    Args:
-        input_dict: Raw input data as a flat dictionary.
-        feature_names: The canonical list of feature column names from training.
-
-    Returns:
-        DataFrame with shape (1, len(feature_names)) ready for model inference.
-
-    Raises:
-        ValueError: If the result shape does not match feature_names.
+    Preserved for backward compatibility. New code should use
+    preprocess_with_pipeline().
     """
     input_df = pd.DataFrame([input_dict])
     encoded = encode_features(input_df)
-
-    # Align to the training schema: keep only known columns, fill missing with 0.
     aligned = encoded.reindex(columns=feature_names, fill_value=0)
 
-    if aligned.shape[1] != len(feature_names):
+    if aligned.shape[1] != len(feature_names):  # pragma: no cover
         raise ValueError(
-            f"Feature alignment produced {aligned.shape[1]} columns, expected {len(feature_names)}."
+            f"Feature alignment produced {aligned.shape[1]} columns, "
+            f"expected {len(feature_names)}."
         )
-
-    logger.debug(
-        "input_preprocess",
-        input_column=len(encoded.columns),
-        aligned_columns=aligned.shape[1],
-    )
 
     return aligned

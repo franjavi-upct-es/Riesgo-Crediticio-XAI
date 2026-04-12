@@ -8,6 +8,7 @@ payloads pass validation cleanly.
 
 import pytest
 from pydantic import ValidationError
+
 from src.api.schemas import CreditDataRequest, PredictionResponse
 
 
@@ -84,7 +85,7 @@ class TestPredictionResponse:
         resp = PredictionResponse(
             prediction="Low Risk (No Default)",
             probability_of_risk=0.25,
-            xai_interpretation={  # type: ignore[arg-type]
+            xai_interpretation={
                 "base_risk_score": 0.35,
                 "detailed_explanation": [],
             },
@@ -96,7 +97,7 @@ class TestPredictionResponse:
             PredictionResponse(
                 prediction="High Risk (Default)",
                 probability_of_risk=1.5,
-                xai_interpretation={  # type: ignore[arg-type]
+                xai_interpretation={
                     "base_risk_score": 0.35,
                     "detailed_explanation": [],
                 },
@@ -107,7 +108,7 @@ class TestPredictionResponse:
             PredictionResponse(
                 prediction="Low Risk (No Default)",
                 probability_of_risk=-0.1,
-                xai_interpretation={  # type: ignore[arg-type]
+                xai_interpretation={
                     "base_risk_score": 0.35,
                     "detailed_explanation": [],
                 },

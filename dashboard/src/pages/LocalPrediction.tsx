@@ -1,46 +1,88 @@
 // dashboard/src/pages/LocalPrediction.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dices, Loader2, Send } from "lucide-react";
 import { clsx } from "clsx";
-import { usePrediction } from "@/hooks/useApi";
 import {
-  CREDIT_FIELDS,
-  buildDefaults,
-  randomize,
-} from "@/components/forms/creditFormConfig";
+  useDatasetSchema,
+  usePrediction,
+  useRandomSample,
+} from "@/hooks/useApi";
+import { useActiveDataset } from "@/hooks/useDatasetContext";
 import RiskBadge from "@/components/ui/RiskBadge";
 import Card from "@/components/ui/Card";
+import { LoadingState, ErrorState } from "@/components/ui/StatusStates";
 import ShapWaterfallChart from "@/components/charts/ShapWaterfallChart";
-import type { CreditDataInput, PredictionResponse } from "@/types/api";
+import type { FeatureDefinition, PredictionResponse } from "@/types/api";
 
 export default function LocalPrediction() {
-  const [formData, setFormData] =
-    useState<Record<string, string | number>>(buildDefaults());
+  const { activeDatasetId } = useActiveDataset();
+  const {
+    data: schema,
+    isLoading: schemaLoading,
+    isError: schemaError,
+  } = useDatasetSchema(activeDatasetId);
+
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<PredictionResponse | null>(null);
 
   const mutation = usePrediction();
+  const randomMutation = useRandomSample(activeDatasetId);
 
-  function updateField(name: string, value: string | number) {
+  // Initialize form with defaults when schema loads
+  useEffect(() => {
+    if (schema?.features) {
+      const defaults: Record<string, unknown> = {};
+      for (const f of schema.features) {
+        defaults[f.name] = f.default_value;
+      }
+      setFormData(defaults);
+      setResult(null);
+    }
+  }, [schema]);
+
+  function updateField(name: string, value: unknown) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
-  function handleRandomize() {
-    setFormData(randomize());
+  async function handleRandomize() {
+    if (!activeDatasetId) return;
+    const resp = await randomMutation.mutateAsync();
+    setFormData(resp.sample);
     setResult(null);
   }
 
   async function handleSubmit() {
-    const payload: Record<string, string | number> = {};
-    for (const field of CREDIT_FIELDS) {
-      const raw = formData[field.name];
-      payload[field.name] = field.type === "number" ? Number(raw) : String(raw);
+    if (!activeDatasetId || !schema) return;
+    const payload: Record<string, unknown> = {};
+    for (const f of schema.features) {
+      const raw = formData[f.name];
+      payload[f.name] = f.type === "numerical" ? Number(raw) : String(raw);
     }
-
-    const resp = await mutation.mutateAsync(
-      payload as unknown as CreditDataInput,
-    );
+    const resp = await mutation.mutateAsync({
+      data: payload,
+      datasetId: activeDatasetId,
+    });
     setResult(resp);
+  }
+
+  if (!activeDatasetId) {
+    return (
+      <ErrorState
+        title="No dataset selected"
+        message="Select a dataset from the sidebar to start making predictions."
+      />
+    );
+  }
+
+  if (schemaLoading) return <LoadingState message="Loading dataset schema…" />;
+  if (schemaError || !schema) {
+    return (
+      <ErrorState
+        title="Schema unavailable"
+        message={`Could not load schema for '${activeDatasetId}'.`}
+      />
+    );
   }
 
   return (
@@ -51,27 +93,32 @@ export default function LocalPrediction() {
           Local prediction
         </h2>
         <p className="mt-1 text-sm text-accent-muted">
-          Submit an applicant profile and get a risk prediction with SHAP
-          explanation
+          {schema.name} — {schema.features.length} features · Submit an
+          applicant profile for risk prediction with SHAP explanation
         </p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        {/* Form */}
+        {/* Dynamic form */}
         <Card className="xl:col-span-2" title="Applicant data">
           <div className="grid gap-3 sm:grid-cols-2">
-            {CREDIT_FIELDS.map((field) => (
-              <label key={field.name} className="block">
-                <span className="mb-1 block text-xs font-medium text-accent-subtle">
-                  {field.label}
+            {schema.features.map((feature: FeatureDefinition) => (
+              <label key={feature.name} className="block">
+                <span className="mb-1 flex items-center gap-1 text-xs font-medium text-accent-subtle">
+                  {feature.description || feature.name}
+                  {feature.protected && (
+                    <span className="rounded bg-amber-100 px-1 text-[9px] font-bold text-amber-700">
+                      Protected
+                    </span>
+                  )}
                 </span>
-                {field.type === "select" ? (
+                {feature.type === "categorical" && feature.options.length > 0 ? (
                   <select
-                    value={String(formData[field.name])}
-                    onChange={(e) => updateField(field.name, e.target.value)}
+                    value={String(formData[feature.name] ?? "")}
+                    onChange={(e) => updateField(feature.name, e.target.value)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition-colors focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                   >
-                    {field.options?.map((opt) => (
+                    {feature.options.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
                       </option>
@@ -80,12 +127,12 @@ export default function LocalPrediction() {
                 ) : (
                   <input
                     type="number"
-                    value={formData[field.name]}
+                    value={String(formData[feature.name] ?? "")}
                     onChange={(e) =>
-                      updateField(field.name, Number(e.target.value))
+                      updateField(feature.name, Number(e.target.value))
                     }
-                    min={field.min}
-                    max={field.max}
+                    min={feature.min ?? undefined}
+                    max={feature.max ?? undefined}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-900 outline-none transition-colors focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                   />
                 )}
@@ -113,6 +160,7 @@ export default function LocalPrediction() {
             </button>
             <button
               onClick={handleRandomize}
+              disabled={randomMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               <Dices size={15} />
@@ -131,7 +179,6 @@ export default function LocalPrediction() {
         <div className="space-y-5 xl:col-span-3">
           {result ? (
             <>
-              {/* Risk badge + probability */}
               <Card>
                 <div className="flex flex-wrap items-center gap-4">
                   <RiskBadge
@@ -147,14 +194,12 @@ export default function LocalPrediction() {
                 </div>
               </Card>
 
-              {/* SHAP waterfall */}
               <ShapWaterfallChart
                 factors={result.xai_interpretation.detailed_explanation}
                 baseValue={result.xai_interpretation.base_risk_score}
                 probability={result.probability_of_risk}
               />
 
-              {/* Raw payload preview */}
               <Card title="Submitted payload">
                 <pre className="max-h-48 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-700">
                   {JSON.stringify(formData, null, 2)}

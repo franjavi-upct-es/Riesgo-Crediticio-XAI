@@ -46,30 +46,17 @@ export default function ShapWaterfallChart({
           No significant factors for this prediction.
         </p>
       ) : (
-        <ResponsiveContainer
-          width="100%"
-          height={Math.max(260, chartData.length * 32)}
-        >
+        <ResponsiveContainer width="100%" height={Math.max(260, chartData.length * 32)}>
           <BarChart
             data={chartData}
             layout="vertical"
             margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#e2e8f0"
-              horizontal={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
             <XAxis
               type="number"
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{
-                value: "SHAP value (impact on risk)",
-                position: "insideBottom",
-                offset: -2,
-                fontSize: 12,
-                fill: "#64748b",
-              }}
+              label={{ value: "SHAP value (impact on risk)", position: "insideBottom", offset: -2, fontSize: 12, fill: "#64748b" }}
             />
             <YAxis
               dataKey="name"
@@ -85,14 +72,9 @@ export default function ShapWaterfallChart({
                   <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg">
                     <p className="font-medium text-slate-800">{d.name}</p>
                     <p className="text-accent-subtle">
-                      Input:{" "}
-                      <span className="font-mono">{String(d.inputValue)}</span>
+                      Input: <span className="font-mono">{String(d.inputValue)}</span>
                     </p>
-                    <p
-                      className={
-                        d.value > 0 ? "text-red-600" : "text-emerald-600"
-                      }
-                    >
+                    <p className={d.value > 0 ? "text-red-600" : "text-emerald-600"}>
                       SHAP: {d.value > 0 ? "+" : ""}
                       {d.value.toFixed(4)} ({d.impact} risk)
                     </p>

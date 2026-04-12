@@ -41,7 +41,9 @@ export default function MetricCard({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-accent-subtle">{label}</span>
-        {icon && <span className="text-accent-muted">{icon}</span>}
+        {icon && (
+          <span className="text-accent-muted">{icon}</span>
+        )}
       </div>
       <p
         className={clsx(

@@ -35,52 +35,21 @@ export default function DistributionChart({ data }: Props) {
           data={chartData}
           margin={{ top: 5, right: 10, bottom: 5, left: 0 }}
         >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#e2e8f0"
-            vertical={false}
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="label"
             tick={{ fontSize: 10, fill: "#94a3b8" }}
-            label={{
-              value: "Predicted probability",
-              position: "insideBottom",
-              offset: -2,
-              fontSize: 12,
-              fill: "#64748b",
-            }}
+            label={{ value: "Predicted probability", position: "insideBottom", offset: -2, fontSize: 12, fill: "#64748b" }}
           />
           <YAxis
             tick={{ fontSize: 11, fill: "#94a3b8" }}
-            label={{
-              value: "Count",
-              angle: -90,
-              position: "insideLeft",
-              offset: 10,
-              fontSize: 12,
-              fill: "#64748b",
-            }}
+            label={{ value: "Count", angle: -90, position: "insideLeft", offset: 10, fontSize: 12, fill: "#64748b" }}
           />
           <Tooltip
             formatter={(v: number) => [v, "Samples"]}
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 8,
-              border: "1px solid #e2e8f0",
-            }}
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
           />
-          <ReferenceLine
-            x="0.50"
-            stroke="#94a3b8"
-            strokeDasharray="4 4"
-            label={{
-              value: "θ=0.5",
-              position: "top",
-              fontSize: 10,
-              fill: "#64748b",
-            }}
-          />
+          <ReferenceLine x="0.50" stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "θ=0.5", position: "top", fontSize: 10, fill: "#64748b" }} />
           <Bar dataKey="count" radius={[3, 3, 0, 0]} barSize={20}>
             {chartData.map((entry, idx) => (
               <Cell

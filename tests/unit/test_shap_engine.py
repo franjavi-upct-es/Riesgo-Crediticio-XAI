@@ -1,5 +1,5 @@
 # tests/unit/test_shap_engine.py
-"""Unit tests for explain.shap_engine.
+"""Unit tests for src.explain.shap_engine.
 
 Tests the normalization logic that handles the various output formats
 from different SHAP library versions (list of arrays, 3D arrays, 2D arrays).
@@ -10,13 +10,14 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from src.explain.shap_engine import ShapEngine, ShapExplanation, _to_native
 
 
 class TestShapNormalization:
     """Test the SHAP value normalization for different output formats."""
 
-    def _make_engine_with_raw(self, raw_output, expected_value=0.35):  # type: ignore[assignment]
+    def _make_engine_with_raw(self, raw_output, expected_value=0.35):
         """Helper: create a ShapEngine with mocked explainer returning raw_output."""
         with patch("src.explain.shap_engine.shap") as mock_shap:
             mock_explainer = MagicMock()
@@ -34,9 +35,9 @@ class TestShapNormalization:
             np.array([[0.1, -0.2, 0.05]]),  # class 0
             np.array([[-0.1, 0.2, -0.05]]),  # class 1
         ]
-        engine = self._make_engine_with_raw(raw, expected_value=[0.3, 0.35])  # type: ignore[arg-type]
+        engine = self._make_engine_with_raw(raw, expected_value=[0.3, 0.35])
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])
         result = engine.explain(X)
 
         assert isinstance(result, ShapExplanation)
@@ -48,7 +49,7 @@ class TestShapNormalization:
         raw = [np.array([[0.1, -0.2, 0.05]])]
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])
         result = engine.explain(X)
 
         assert len(result.all_shap_values) == 3
@@ -58,7 +59,7 @@ class TestShapNormalization:
         raw = np.array([[0.3, -0.15, 0.08]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])
         result = engine.explain(X)
 
         assert abs(result.all_shap_values[0] - 0.3) < 1e-5
@@ -71,9 +72,9 @@ class TestShapNormalization:
                 [[-0.1, 0.2, -0.05]],  # class 1
             ]
         )
-        engine = self._make_engine_with_raw(raw, expected_value=[0.3, 0.35])  # type: ignore[arg-type]
+        engine = self._make_engine_with_raw(raw, expected_value=[0.3, 0.35])
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20, 30]], columns=["a", "b", "c"])
         result = engine.explain(X)
 
         # Should pick class 1 values
@@ -84,7 +85,9 @@ class TestShapNormalization:
         raw = np.array([[0.5, 0.0001, -0.3]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["big_pos", "tiny", "big_neg"])  # type: ignore[arg-type]
+        X = pd.DataFrame(
+            [[10, 20, 30]], columns=["big_pos", "tiny", "big_neg"]
+        )
         result = engine.explain(X, significance_threshold=0.01)
 
         factor_names = [f.feature for f in result.factors]
@@ -97,7 +100,9 @@ class TestShapNormalization:
         raw = np.array([[0.1, -0.5, 0.3]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20, 30]], columns=["small", "biggest", "medium"])  # type: ignore[arg-type]
+        X = pd.DataFrame(
+            [[10, 20, 30]], columns=["small", "biggest", "medium"]
+        )
         result = engine.explain(X, significance_threshold=0.01)
 
         magnitudes = [abs(f.shap_value) for f in result.factors]
@@ -108,7 +113,7 @@ class TestShapNormalization:
         raw = np.array([[0.5, -0.3]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20]], columns=["pos", "neg"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20]], columns=["pos", "neg"])
         result = engine.explain(X, significance_threshold=0.01)
 
         impacts = {f.feature: f.impact for f in result.factors}
@@ -120,7 +125,7 @@ class TestShapNormalization:
         raw = np.array([[0.1, 0.2]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame([[10, 20], [30, 40]], columns=["a", "b"])  # type: ignore[arg-type]
+        X = pd.DataFrame([[10, 20], [30, 40]], columns=["a", "b"])
         with pytest.raises(ValueError, match="single-row"):
             engine.explain(X)
 

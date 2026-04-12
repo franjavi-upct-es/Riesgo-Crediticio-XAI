@@ -1,8 +1,8 @@
 # Dockerfile.api
 #
-# Multi-stage build for the Credit Risk XAI API.
+# Multi-stage build for the Credit Risk XAI API using uv.
 #
-# Stage 1 (builder): installs dependencies into a virtual environment.
+# Stage 1 (builder): installs dependencies with uv into a virtual environment.
 # Stage 2 (runtime): copies only the venv and source — no build tools.
 #
 # Usage:
@@ -14,19 +14,16 @@
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim AS builder
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 WORKDIR /build
 
-# Install build dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-
-# Copy dependency specification first (layer cache optimization)
-COPY pyproject.toml ./
+# Copy dependency specification and lockfile first (layer cache optimization)
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 
-# Install the package into a virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir .
+# Install dependencies into a virtual environment using the lockfile
+RUN uv sync --frozen --no-dev --no-editable
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -40,11 +37,12 @@ RUN groupadd --gid 1001 appuser && \
 WORKDIR /app
 
 # Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+COPY --from=builder /build/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application source
 COPY src/ ./src/
+COPY configs/ ./configs/
 
 # Copy model artifacts if they exist (optional — can be mounted at runtime)
 COPY models/ ./models/
@@ -70,5 +68,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 USER appuser
 
 # Run with uvicorn
-CMD ["python", "-m", "uvicorn", "api.app:app", \
+CMD ["python", "-m", "uvicorn", "src.api.app:app", \
      "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

@@ -10,9 +10,9 @@ spans, preprocessing spans, and model inference spans. Custom spans
 can be created via the get_tracer() function.
 
 Integration:
-    - FastAPI auto-instruments adds spans for every HTTP request.
-    - Manual spans are added in predict route for preprocessing, inference, SHAP.
-    - Traces are exported to an OTLP-compatible collector (Jaeger, Tempo, etc.).
+  - FastAPI auto-instrumentation adds spans for every HTTP request.
+  - Manual spans are added in predict route for preprocessing, inference, SHAP.
+  - Traces are exported to an OTLP-compatible collector (Jaeger, Tempo, etc.).
 """
 
 from __future__ import annotations
@@ -46,7 +46,9 @@ def setup_tracing(app: FastAPI) -> None:
 
     try:
         from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider

@@ -2,8 +2,8 @@
 """Data and prediction drift detection.
 
 Implements lightweight statistical drift detection by comparing
-production prediction inputs and ouputs against a reference
-distribution from training. Uses Kolgomorov-Smirnov test for
+production prediction inputs and outputs against a reference
+distribution from training. Uses Kolmogorov-Smirnov test for
 numeric features and chi-squared test for categorical features.
 
 The detector maintains a rolling buffer of recent predictions.
@@ -11,13 +11,13 @@ When the buffer reaches the configured size, it runs drift checks
 and exposes results via Prometheus gauges and a REST endpoint.
 
 Design decisions:
-    - No Evidently dependency: scipy-based tests keep the footprint small
-      and avoid version conflicts. The same KS/chi2 tests Evidently uses
-      internally are implemented directly.
-    - Thread-safe: uses a lock around the buffer since FastAPI handlers
-      may call record() concurrently with uvicorn workers=1 + async.
-    - Stateless across restarts: the buffer is in-memory only. For
-      persistence, a future version could flush to Redis or a time-series DB.
+  - No Evidently dependency: scipy-based tests keep the footprint small
+    and avoid version conflicts. The same KS/chi2 tests Evidently uses
+    internally are implemented directly.
+  - Thread-safe: uses a lock around the buffer since FastAPI handlers
+    may call record() concurrently with uvicorn workers=1 + async.
+  - Stateless across restarts: the buffer is in-memory only. For
+    persistence, a future version could flush to Redis or a time-series DB.
 """
 
 from __future__ import annotations
@@ -43,7 +43,9 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 DRIFT_SCORE = Gauge(
-    "drift_score", "Overall drift score (fraction of features that drifted).", registry=REGISTRY
+    "drift_score",
+    "Overall drift score (fraction of features that drifted).",
+    registry=REGISTRY,
 )
 
 DRIFT_FEATURES_DRIFTED = Gauge(
@@ -57,6 +59,7 @@ PREDICTION_DRIFT_PVALUE = Gauge(
     "KS test p-value for predicted probability distribution drift.",
     registry=REGISTRY,
 )
+
 
 # ---------------------------------------------------------------------------
 # Drift result dataclass
@@ -128,13 +131,17 @@ class DriftDetector:
         self._threshold = settings.drift.detection_threshold
         self._buffer_size = settings.drift.buffer_size
 
-        self._input_buffer: deque[np.ndarray] = deque(maxlen=settings.drift.reference_window_size)
-        self._prediction_buffer: deque[float] = deque(maxlen=settings.drift.reference_window_size)
+        self._input_buffer: deque[np.ndarray] = deque(
+            maxlen=settings.drift.reference_window_size
+        )
+        self._prediction_buffer: deque[float] = deque(
+            maxlen=settings.drift.reference_window_size
+        )
         self._lock = threading.Lock()
         self._last_report: DriftReport | None = None
 
         logger.info(
-            "drift_detector_intialized",
+            "drift_detector_initialized",
             n_reference=len(reference_data),
             n_features=len(feature_names),
             threshold=self._threshold,
@@ -159,7 +166,7 @@ class DriftDetector:
 
     @property
     def last_report(self) -> DriftReport | None:
-        """The most recent drift report."""
+        """The most recent drift analysis report."""
         return self._last_report
 
     def analyze(self) -> DriftReport:
@@ -192,13 +199,11 @@ class DriftDetector:
 
             # Use KS test for all features (post one-hot encoding, all numeric)
             try:
-                stat_raw, p_raw = stats.ks_2samp(ref_col, cur_col)
-                stat = float(stat_raw)  # type: ignore[arg-type]
-                p_value = float(p_raw)  # type: ignore[arg-type]
+                stat, p_value = stats.ks_2samp(ref_col, cur_col)
             except Exception:
                 stat, p_value = 0.0, 1.0
 
-            is_drifted = p_value < self._threshold
+            is_drifted = bool(p_value < self._threshold)
             if is_drifted:
                 drifted_count += 1
 
@@ -215,14 +220,17 @@ class DriftDetector:
         # Prediction distribution drift
         pred_p_value = 1.0
         pred_drifted = False
-        if self._ref_predictions is not None and len(self._ref_predictions) > 0:
+        if (
+            self._ref_predictions is not None
+            and len(self._ref_predictions) > 0
+        ):
             try:
-                _, pred_p_raw = stats.ks_2samp(
+                _, pred_p_value = stats.ks_2samp(
                     self._ref_predictions.astype(float),
                     current_predictions,
                 )
-                pred_p_value = float(pred_p_raw)  # type: ignore[arg-type]
-                pred_drifted = pred_p_value < self._threshold
+                pred_p_value = float(pred_p_value)
+                pred_drifted = bool(pred_p_value < self._threshold)
             except Exception:
                 pred_p_value = 1.0
 
@@ -259,7 +267,7 @@ class DriftDetector:
         return report
 
     def _empty_report(self, reason: str) -> DriftReport:
-        """Create a empty report when analysis cannot run."""
+        """Create an empty report when analysis cannot run."""
         return DriftReport(
             timestamp=datetime.now(timezone.utc).isoformat(),
             n_reference=len(self._reference),
@@ -275,7 +283,9 @@ class DriftDetector:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the last report to a JSON-compatible dict."""
-        report = self._last_report or self._empty_report(reason="no_analysis_yet")
+        report = self._last_report or self._empty_report(
+            reason="no_analysis_yet"
+        )
         return {
             "timestamp": report.timestamp,
             "n_reference": report.n_reference,

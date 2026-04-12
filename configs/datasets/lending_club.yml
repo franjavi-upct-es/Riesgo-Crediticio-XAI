@@ -1,0 +1,144 @@
+# configs/datasets/lending_club.yml
+#
+# Schema definition for the Lending Club P2P loan dataset.
+# Granting model variant: features known at application time only.
+# Source: Kaggle / Zenodo (zenodo.org/records/11295916)
+
+id: lending_club
+name: Lending Club Loans
+description: >
+  Peer-to-peer lending data from Lending Club (2007-2018). Granting model
+  variant with features available at loan application time. Binary target:
+  fully paid vs default. ~887K records, 74 features (subset used here).
+source:
+  type: csv
+  filename: lending_club.csv
+  url: https://www.kaggle.com/datasets/wordsforthewise/lending-club
+
+target:
+  column: loan_status
+  mapping:
+    "Fully Paid": 0
+    "Charged Off": 1
+  positive_label: 1
+  labels:
+    0: "Fully Paid"
+    1: "Default"
+
+features:
+  - name: loan_amnt
+    type: numerical
+    description: The listed amount of the loan applied for
+    min: 500
+    max: 40000
+
+  - name: term
+    type: categorical
+    description: Number of payments on the loan (months)
+    options: ["36 months", "60 months"]
+
+  - name: int_rate
+    type: numerical
+    description: Interest rate on the loan (%)
+    min: 5.0
+    max: 31.0
+
+  - name: installment
+    type: numerical
+    description: Monthly payment owed by the borrower
+    min: 15
+    max: 1500
+
+  - name: grade
+    type: categorical
+    description: Lending Club assigned loan grade
+    options: ["A", "B", "C", "D", "E", "F", "G"]
+
+  - name: sub_grade
+    type: categorical
+    description: Lending Club assigned loan sub-grade
+    options: ["A1","A2","A3","A4","A5","B1","B2","B3","B4","B5","C1","C2","C3","C4","C5","D1","D2","D3","D4","D5","E1","E2","E3","E4","E5","F1","F2","F3","F4","F5","G1","G2","G3","G4","G5"]
+
+  - name: emp_length
+    type: categorical
+    description: Employment length in years
+    options: ["< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"]
+
+  - name: home_ownership
+    type: categorical
+    description: Home ownership status
+    options: ["RENT", "OWN", "MORTGAGE", "OTHER"]
+
+  - name: annual_inc
+    type: numerical
+    description: Self-reported annual income
+    min: 0
+    max: 10000000
+
+  - name: verification_status
+    type: categorical
+    description: Whether income was verified by Lending Club
+    options: ["Verified", "Source Verified", "Not Verified"]
+
+  - name: purpose
+    type: categorical
+    description: Category provided by the borrower for the loan request
+    options: ["debt_consolidation", "credit_card", "home_improvement", "other", "major_purchase", "small_business", "car", "medical", "moving", "vacation", "house", "wedding", "renewable_energy", "educational"]
+
+  - name: dti
+    type: numerical
+    description: Debt-to-income ratio
+    min: 0
+    max: 100
+
+  - name: open_acc
+    type: numerical
+    description: Number of open credit lines
+    min: 0
+    max: 100
+
+  - name: pub_rec
+    type: numerical
+    description: Number of derogatory public records
+    min: 0
+    max: 50
+
+  - name: revol_bal
+    type: numerical
+    description: Total credit revolving balance
+    min: 0
+    max: 3000000
+
+  - name: revol_util
+    type: numerical
+    description: Revolving line utilization rate (%)
+    min: 0
+    max: 200
+
+  - name: total_acc
+    type: numerical
+    description: Total number of credit lines in the borrower's credit file
+    min: 1
+    max: 200
+
+  - name: application_type
+    type: categorical
+    description: Whether the loan is individual or joint
+    options: ["Individual", "Joint App"]
+
+  - name: mort_acc
+    type: numerical
+    description: Number of mortgage accounts
+    min: 0
+    max: 50
+
+  - name: pub_rec_bankruptcies
+    type: numerical
+    description: Number of public record bankruptcies
+    min: 0
+    max: 10
+
+  - name: addr_state
+    type: categorical
+    description: US state of the borrower
+    protected: true

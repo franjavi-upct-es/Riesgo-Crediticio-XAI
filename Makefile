@@ -4,8 +4,8 @@
 
 .PHONY: help install install-dev train api dashboard dashboard-build test lint type-check fmt check docker-up docker-down clean
 
-PYTHON ?= uv run python
-PIP    ?= uv pip
+PYTHON ?= uv run python3
+UV     ?= uv
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -15,10 +15,10 @@ help: ## Show this help message
 # ---------------------------------------------------------------------------
 
 install: ## Install the package (production dependencies only)
-	$(PIP) install -e .
+	$(UV) sync --no-dev
 
 install-dev: ## Install with all extras (dev, dashboard, monitoring)
-	$(PIP) install -e ".[all]"
+	$(UV) sync --all-extras
 
 install-dashboard: ## Install dashboard dependencies
 	cd dashboard && npm install
@@ -28,14 +28,14 @@ install-dashboard: ## Install dashboard dependencies
 # ---------------------------------------------------------------------------
 
 train: ## Run the training pipeline (model + evaluation metrics)
-	$(PYTHON) -m src.model.train
+	$(UV) run python -m src.model.train
 
 # ---------------------------------------------------------------------------
 # Services
 # ---------------------------------------------------------------------------
 
 api: ## Start the API server (port 8000)
-	$(PYTHON) -m src.api.app
+	$(UV) run python -m src.api.app
 
 dashboard: ## Start the dashboard dev server (port 5173)
 	cd dashboard && npx vite
@@ -48,26 +48,26 @@ dashboard-build: ## Build the dashboard for production
 # ---------------------------------------------------------------------------
 
 test: ## Run all tests with coverage
-	$(PYTHON) -m pytest tests/ --cov=credit_risk --cov-report=term-missing --cov-report=html -v
+	$(UV) run pytest tests/ --cov=src --cov-report=term-missing --cov-report=html -v
 
 test-unit: ## Run unit tests only
-	$(PYTHON) -m pytest tests/unit/ -v
+	$(UV) run pytest tests/unit/ -v
 
 test-integration: ## Run integration tests only
-	$(PYTHON) -m pytest tests/integration/ -v
+	$(UV) run pytest tests/integration/ -v
 
 lint: ## Run ruff linter (Python) + tsc (TypeScript)
-	$(PYTHON) -m ruff check src/ tests/
+	$(UV) run ruff check src/ tests/
 	cd dashboard && npx tsc --noEmit
 
 lint-fix: ## Run ruff with auto-fix
-	$(PYTHON) -m ruff check src/ tests/ --fix
+	$(UV) run ruff check src/ tests/ --fix
 
 type-check: ## Run mypy type checker
-	$(PYTHON) -m mypy src/
+	$(UV) run mypy src/
 
 fmt: ## Format code with ruff
-	$(PYTHON) -m ruff format src/ tests/
+	$(UV) run ruff format src/ tests/
 
 check: lint type-check test ## Run all quality checks
 

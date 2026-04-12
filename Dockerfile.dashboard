@@ -41,6 +41,12 @@ RUN printf 'server {\n\
   location /evaluation/ {\n\
     proxy_pass http://api:8000;\n\
   }\n\
+  location /datasets/ {\n\
+    proxy_pass http://api:8000;\n\
+  }\n\
+  location /monitoring/ {\n\
+    proxy_pass http://api:8000;\n\
+  }\n\
   location /health {\n\
     proxy_pass http://api:8000;\n\
   }\n\

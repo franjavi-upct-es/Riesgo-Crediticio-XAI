@@ -1,5 +1,5 @@
 # tests/unit/test_experiment_tracker.py
-"""Unit tests for model.experiment_tracker.
+"""Unit tests for src.model.experiment_tracker.
 
 Verifies that the tracker behaves as a no-op when disabled, and
 correctly delegates to MLflow when enabled.
@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from src.model.experiment_tracker import ExperimentTracker
 
 

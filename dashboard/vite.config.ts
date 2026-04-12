@@ -15,8 +15,10 @@ export default defineConfig({
     proxy: {
       "/predict_risk": "http://127.0.0.1:8000",
       "/evaluation": "http://127.0.0.1:8000",
+      "/datasets": "http://127.0.0.1:8000",
       "/health": "http://127.0.0.1:8000",
       "/metrics": "http://127.0.0.1:8000",
+      "/monitoring": "http://127.0.0.1:8000",
     },
   },
 });

@@ -1,5 +1,5 @@
 # tests/unit/test_config.py
-"""Unit tests for config.
+"""Unit tests for src.config.
 
 Verifies default values, path construction, and validation rules
 for the centralized settings system.
@@ -8,6 +8,7 @@ for the centralized settings system.
 from pathlib import Path
 
 import pytest
+
 from src.config import Settings
 
 
@@ -27,7 +28,9 @@ class TestDefaultSettings:
 
     def test_data_path_construction(self):
         s = Settings()
-        assert s.data.synthetic_test_path == Path("data/synthetic_test_set.csv")
+        assert s.data.synthetic_test_path == Path(
+            "data/synthetic_test_set.csv"
+        )
 
     def test_training_defaults(self):
         s = Settings()
@@ -46,12 +49,12 @@ class TestSettingsValidation:
 
     def test_rejects_test_size_zero(self):
         with pytest.raises(Exception):
-            Settings(train={"test_size": 0.0})  # type: ignore[arg-type]
+            Settings(train={"test_size": 0.0})
 
     def test_rejects_test_size_one(self):
         with pytest.raises(Exception):
-            Settings(train={"test_size": 1.0})  # type: ignore[arg-type]
+            Settings(train={"test_size": 1.0})
 
     def test_accepts_valid_test_size(self):
-        s = Settings(train={"test_size": 0.3})  # type: ignore[arg-type]
+        s = Settings(train={"test_size": 0.3})
         assert s.train.test_size == 0.3

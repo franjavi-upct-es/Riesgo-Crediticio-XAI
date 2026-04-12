@@ -1,5 +1,5 @@
 # tests/unit/test_metrics.py
-"""Unit tests for monitoring.metrics.
+"""Unit tests for src.monitoring.metrics.
 
 Verifies that all Prometheus metrics are correctly registered
 in the custom registry and that the metrics endpoint produces
@@ -7,6 +7,7 @@ valid output.
 """
 
 from prometheus_client import generate_latest
+
 from src.monitoring.metrics import (
     MODEL_INFO,
     PREDICTION_COUNT,
@@ -37,7 +38,7 @@ class TestMetricsRegistration:
 
     def test_prediction_count_registered(self):
         output = generate_latest(REGISTRY).decode()
-        assert "prediction_total" in output
+        assert "predictions_total" in output
 
     def test_prediction_probability_registered(self):
         output = generate_latest(REGISTRY).decode()
@@ -60,10 +61,14 @@ class TestMetricsIncrement:
     """Verify metrics can be incremented without errors."""
 
     def test_request_count_increment(self):
-        REQUEST_COUNT.labels(method="POST", endpoint="/predict_risk/", status_code="200").inc()
+        REQUEST_COUNT.labels(
+            method="POST", endpoint="/predict_risk/", status_code="200"
+        ).inc()
 
     def test_request_latency_observe(self):
-        REQUEST_LATENCY.labels(method="POST", endpoint="/predict_risk/").observe(0.05)
+        REQUEST_LATENCY.labels(
+            method="POST", endpoint="/predict_risk/"
+        ).observe(0.05)
 
     def test_in_progress_gauge(self):
         g = REQUESTS_IN_PROGRESS.labels(method="GET", endpoint="/health")

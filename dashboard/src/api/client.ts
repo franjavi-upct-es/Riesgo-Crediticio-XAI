@@ -1,7 +1,8 @@
 // dashboard/src/api/client.ts
 
 import type {
-  CreditDataInput,
+  DatasetsListResponse,
+  DatasetSchemaResponse,
   FullEvaluation,
   HealthResponse,
   PredictionResponse,
@@ -39,12 +40,32 @@ export function fetchHealth(): Promise<HealthResponse> {
   return request<HealthResponse>("/health");
 }
 
-// -- Prediction ---
+// --- Datasets ---
+
+export function fetchDatasets(): Promise<DatasetsListResponse> {
+  return request<DatasetsListResponse>("/datasets/");
+}
+
+export function fetchDatasetSchema(
+  datasetId: string,
+): Promise<DatasetSchemaResponse> {
+  return request<DatasetSchemaResponse>(`/datasets/${datasetId}/schema`);
+}
+
+export function fetchRandomSample(
+  datasetId: string,
+): Promise<{ dataset_id: string; sample: Record<string, unknown> }> {
+  return request(`/datasets/${datasetId}/random`);
+}
+
+// --- Prediction ---
 
 export function postPrediction(
-  data: CreditDataInput,
+  data: Record<string, unknown>,
+  datasetId?: string,
 ): Promise<PredictionResponse> {
-  return request<PredictionResponse>("/predict_risk/", {
+  const qs = datasetId ? `?dataset_id=${datasetId}` : "";
+  return request<PredictionResponse>(`/predict_risk/${qs}`, {
     method: "POST",
     body: JSON.stringify(data),
   });

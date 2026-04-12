@@ -1,5 +1,5 @@
 # tests/unit/test_training_config.py
-"""Unit tests for model.training_config.
+"""Unit tests for src.model.training_config.
 
 Verifies YAML loading, default fallbacks, and hyperparameter
 dataclass construction.
@@ -9,6 +9,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+
 from src.model.training_config import (
     ModelHyperparams,
     TrainingConfig,
@@ -37,7 +38,7 @@ class TestModelHyperparams:
     def test_is_frozen(self):
         hp = ModelHyperparams()
         with pytest.raises(AttributeError):
-            hp.n_estimators = 999  # type: ignore[misc]
+            hp.n_estimators = 999
 
 
 class TestTrainingConfig:
@@ -53,7 +54,7 @@ class TestTrainingConfig:
     def test_is_frozen(self):
         cfg = TrainingConfig()
         with pytest.raises(AttributeError):
-            cfg.test_size = 0.5  # type: ignore[misc]
+            cfg.test_size = 0.5
 
 
 class TestLoadTrainingConfig:
