@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api import dependencies as deps
 from src.api.app import create_app
 from src.api.auth import verify_api_key
@@ -38,9 +37,7 @@ def client_with_drift(mock_detector):
     with (
         patch.object(deps, "_models", {"german_credit": MagicMock()}),
         patch.object(deps, "_shap_engines", {}),
-        patch.object(
-            deps, "_drift_detectors", {"german_credit": mock_detector}
-        ),
+        patch.object(deps, "_drift_detectors", {"german_credit": mock_detector}),
         patch.object(deps, "_default_dataset_id", "german_credit"),
         TestClient(app) as tc,
     ):

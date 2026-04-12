@@ -11,7 +11,6 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api import dependencies as deps
 from src.api.app import create_app
 from src.api.auth import verify_api_key
@@ -73,9 +72,7 @@ def client(eval_dir: Path):
         patch("src.api.routes.evaluation.settings") as mock_settings,
     ):
         mock_settings.data.dir = eval_dir
-        mock_settings.data.evaluation_metrics_path = (
-            eval_dir / "legacy_eval.json"
-        )
+        mock_settings.data.evaluation_metrics_path = eval_dir / "legacy_eval.json"
 
         with TestClient(app) as tc:
             yield tc
@@ -113,18 +110,14 @@ class TestMetricsEndpoint:
 
 class TestConfusionMatrix:
     def test_returns_matrix_and_labels(self, client):
-        resp = client.get(
-            "/evaluation/confusion_matrix?dataset_id=german_credit"
-        )
+        resp = client.get("/evaluation/confusion_matrix?dataset_id=german_credit")
         assert resp.status_code == 200
         body = resp.json()
         assert len(body["matrix"]) == 2
         assert len(body["labels"]) == 2
 
     def test_returns_503_when_missing(self, client):
-        resp = client.get(
-            "/evaluation/confusion_matrix?dataset_id=nonexistent"
-        )
+        resp = client.get("/evaluation/confusion_matrix?dataset_id=nonexistent")
         assert resp.status_code == 503
 
 
@@ -143,9 +136,7 @@ class TestRocCurve:
 
 class TestShapImportance:
     def test_returns_sorted_features(self, client):
-        resp = client.get(
-            "/evaluation/shap_importance?dataset_id=german_credit"
-        )
+        resp = client.get("/evaluation/shap_importance?dataset_id=german_credit")
         assert resp.status_code == 200
         body = resp.json()
         assert body["shap_importance"][0]["feature"] == "age"
@@ -157,17 +148,13 @@ class TestShapImportance:
 
 class TestPredictionDistribution:
     def test_returns_histogram_bins(self, client):
-        resp = client.get(
-            "/evaluation/prediction_distribution?dataset_id=german_credit"
-        )
+        resp = client.get("/evaluation/prediction_distribution?dataset_id=german_credit")
         assert resp.status_code == 200
         body = resp.json()
         assert len(body["prediction_distribution"]) == 2
 
     def test_returns_503_when_missing(self, client):
-        resp = client.get(
-            "/evaluation/prediction_distribution?dataset_id=nonexistent"
-        )
+        resp = client.get("/evaluation/prediction_distribution?dataset_id=nonexistent")
         assert resp.status_code == 503
 
 

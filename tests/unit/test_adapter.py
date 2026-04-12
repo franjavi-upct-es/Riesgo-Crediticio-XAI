@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-
 from src.data.adapter import (
     _extract_target,
     _load_csv,
@@ -61,9 +60,7 @@ def _make_schema(
 
 class TestLoadDataset:
     def test_csv_source(self, tmp_path):
-        df = pd.DataFrame(
-            {"age": [25, 30], "income": [5000, 6000], "label": [0, 1]}
-        )
+        df = pd.DataFrame({"age": [25, 30], "income": [5000, 6000], "label": [0, 1]})
         df.to_csv(tmp_path / "test.csv", index=False)
 
         schema = _make_schema()
@@ -93,9 +90,7 @@ class TestLoadDataset:
         assert "missing_col" not in X.columns
 
     def test_parquet_source(self, tmp_path):
-        df = pd.DataFrame(
-            {"age": [25, 30], "income": [5000, 6000], "label": [0, 1]}
-        )
+        df = pd.DataFrame({"age": [25, 30], "income": [5000, 6000], "label": [0, 1]})
         df.to_parquet(tmp_path / "test.parquet")
 
         schema = _make_schema(source_type="parquet", filename="test.parquet")

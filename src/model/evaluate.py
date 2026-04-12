@@ -88,17 +88,9 @@ def compute_and_save_evaluation(
     shap_values_raw = explainer.shap_values(X_test)
 
     if isinstance(shap_values_raw, list):
-        sv = np.asarray(
-            shap_values_raw[1]
-            if len(shap_values_raw) > 1
-            else shap_values_raw[0]
-        )
+        sv = np.asarray(shap_values_raw[1] if len(shap_values_raw) > 1 else shap_values_raw[0])
     elif isinstance(shap_values_raw, np.ndarray) and shap_values_raw.ndim == 3:
-        sv = (
-            shap_values_raw[1]
-            if shap_values_raw.shape[0] > 1
-            else shap_values_raw[0]
-        )
+        sv = shap_values_raw[1] if shap_values_raw.shape[0] > 1 else shap_values_raw[0]
     else:
         sv = np.asarray(shap_values_raw)
 

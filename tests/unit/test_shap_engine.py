@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.explain.shap_engine import ShapEngine, ShapExplanation, _to_native
 
 
@@ -85,9 +84,7 @@ class TestShapNormalization:
         raw = np.array([[0.5, 0.0001, -0.3]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame(
-            [[10, 20, 30]], columns=["big_pos", "tiny", "big_neg"]
-        )
+        X = pd.DataFrame([[10, 20, 30]], columns=["big_pos", "tiny", "big_neg"])
         result = engine.explain(X, significance_threshold=0.01)
 
         factor_names = [f.feature for f in result.factors]
@@ -100,9 +97,7 @@ class TestShapNormalization:
         raw = np.array([[0.1, -0.5, 0.3]])
         engine = self._make_engine_with_raw(raw, expected_value=0.4)
 
-        X = pd.DataFrame(
-            [[10, 20, 30]], columns=["small", "biggest", "medium"]
-        )
+        X = pd.DataFrame([[10, 20, 30]], columns=["small", "biggest", "medium"])
         result = engine.explain(X, significance_threshold=0.01)
 
         magnitudes = [abs(f.shap_value) for f in result.factors]

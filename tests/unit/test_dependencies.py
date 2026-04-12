@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-
 import src.api.dependencies as deps_module
 
 
@@ -17,9 +16,7 @@ class TestInitializeResources:
     @patch("src.api.dependencies.ShapEngine")
     @patch("src.api.dependencies.list_trained_models", return_value=[])
     @patch("src.api.dependencies.load_model_artifacts")
-    def test_loads_legacy_when_no_trained_models(
-        self, mock_load, mock_list, mock_shap
-    ):
+    def test_loads_legacy_when_no_trained_models(self, mock_load, mock_list, mock_shap):
         mock_artifacts = MagicMock()
         mock_artifacts.dataset_id = "german_credit"
         mock_artifacts.model = MagicMock()
@@ -70,9 +67,7 @@ class TestInitializeResources:
         "src.api.dependencies.list_trained_models",
         return_value=["ds_a", "ds_b"],
     )
-    def test_loads_multiple_datasets(
-        self, mock_list, mock_load, mock_shap, mock_drift
-    ):
+    def test_loads_multiple_datasets(self, mock_list, mock_load, mock_shap, mock_drift):
         artifacts_a = MagicMock()
         artifacts_a.model = MagicMock()
         artifacts_a.feature_names = ["f1"]
@@ -112,9 +107,7 @@ class TestInitializeResources:
 
 class TestInitDriftDetector:
     @patch("src.api.dependencies.settings")
-    def test_initializes_from_synthetic_test_set(
-        self, mock_settings, tmp_path
-    ):
+    def test_initializes_from_synthetic_test_set(self, mock_settings, tmp_path):
         ds_dir = tmp_path / "ds_a"
         ds_dir.mkdir()
         df = pd.DataFrame(

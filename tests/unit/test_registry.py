@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from src.model.registry import (
     ModelArtifacts,
     list_trained_models,
@@ -14,9 +13,7 @@ from src.model.registry import (
 
 
 class TestModelArtifacts:
-    def test_validate_passes_with_consistent_artifacts(
-        self, mock_xgb_model, sample_feature_names
-    ):
+    def test_validate_passes_with_consistent_artifacts(self, mock_xgb_model, sample_feature_names):
         artifacts = ModelArtifacts(
             model=mock_xgb_model,
             feature_names=sample_feature_names,
@@ -49,9 +46,7 @@ class TestModelArtifacts:
         with pytest.raises(ValueError, match="feature"):
             artifacts.validate()
 
-    def test_validate_fails_on_model_without_predict_proba(
-        self, sample_feature_names
-    ):
+    def test_validate_fails_on_model_without_predict_proba(self, sample_feature_names):
         model = MagicMock(spec=[])
         model.n_features_in_ = len(sample_feature_names)
         artifacts = ModelArtifacts(
@@ -99,9 +94,7 @@ class TestLoadModelArtifacts:
             load_model_artifacts(dataset_id="test", model_dir=tmp_path)
 
     @patch("src.model.registry.joblib")
-    def test_loads_and_validates(
-        self, mock_joblib, tmp_path, mock_xgb_model, sample_feature_names
-    ):
+    def test_loads_and_validates(self, mock_joblib, tmp_path, mock_xgb_model, sample_feature_names):
         ds_dir = tmp_path / "test"
         ds_dir.mkdir()
         (ds_dir / "model.pkl").touch()

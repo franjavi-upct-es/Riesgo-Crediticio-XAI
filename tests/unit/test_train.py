@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
 import src.model.train as train_module
 from src.model.train import _generate_synthetic_test_set, train_model
 from src.model.training_config import ModelHyperparams, TrainingConfig
@@ -62,9 +61,7 @@ def mock_schema():
         features=[
             FeatureSchema(name="age", type="numerical"),
             FeatureSchema(name="income", type="numerical"),
-            FeatureSchema(
-                name="grade", type="categorical", options=["A", "B", "C"]
-            ),
+            FeatureSchema(name="grade", type="categorical", options=["A", "B", "C"]),
         ],
     )
 
@@ -160,9 +157,7 @@ class TestGenerateSyntheticTestSet:
         )
         y_test = pd.Series([0] * 40 + [1] * 10, name="target")
 
-        _generate_synthetic_test_set(
-            X_test, y_test, mock_training_config, tmp_path
-        )
+        _generate_synthetic_test_set(X_test, y_test, mock_training_config, tmp_path)
 
         output_path = tmp_path / "synthetic_test_set.csv"
         assert output_path.exists()
@@ -179,9 +174,7 @@ class TestMainCLI:
     def test_main_calls_train(self, mock_structlog, mock_train):
         with patch("sys.argv", ["train", "--dataset", "german_credit"]):
             train_module.main()
-        mock_train.assert_called_once_with(
-            dataset_id="german_credit", config_path=None
-        )
+        mock_train.assert_called_once_with(dataset_id="german_credit", config_path=None)
 
     @patch("src.model.train.train_model", side_effect=Exception("boom"))
     @patch("src.model.train.structlog")

@@ -43,9 +43,7 @@ limiter = Limiter(
 )
 
 
-def _rate_limit_exceeded_handler(
-    request: Request, exc: RateLimitExceeded
-) -> JSONResponse:
+def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """Custom handler for rate limit violations."""
     logger.warning(
         "rate_limit_exceeded",
@@ -108,9 +106,7 @@ def register_middleware(app: FastAPI) -> None:
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Injects a unique request ID and logs request/response metadata."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = str(uuid.uuid4())[:8]
         start_time = time.perf_counter()
 
@@ -148,9 +144,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
     _SKIP_PATHS: frozenset[str] = frozenset({"/metrics", "/alive"})
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
         method = request.method
 
@@ -165,9 +159,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception:  # pragma: no cover
-            REQUEST_COUNT.labels(
-                method=method, endpoint=endpoint, status_code="500"
-            ).inc()
+            REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code="500").inc()
             REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).dec()
             raise
 
@@ -178,9 +170,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             endpoint=endpoint,
             status_code=str(response.status_code),
         ).inc()
-        REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(
-            duration
-        )
+        REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
         REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).dec()
 
         return response
@@ -201,9 +191,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds standard security headers to all responses."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"

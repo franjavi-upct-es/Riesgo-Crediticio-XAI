@@ -8,7 +8,6 @@ for the centralized settings system.
 from pathlib import Path
 
 import pytest
-
 from src.config import Settings
 
 
@@ -28,9 +27,7 @@ class TestDefaultSettings:
 
     def test_data_path_construction(self):
         s = Settings()
-        assert s.data.synthetic_test_path == Path(
-            "data/synthetic_test_set.csv"
-        )
+        assert s.data.synthetic_test_path == Path("data/synthetic_test_set.csv")
 
     def test_training_defaults(self):
         s = Settings()

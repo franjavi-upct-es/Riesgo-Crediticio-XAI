@@ -45,9 +45,7 @@ def list_datasets() -> dict[str, Any]:
                 }
             )
         except Exception as exc:
-            logger.warning(
-                "dataset_schema_load_failed", dataset_id=ds_id, error=str(exc)
-            )
+            logger.warning("dataset_schema_load_failed", dataset_id=ds_id, error=str(exc))
 
     return {"datasets": datasets, "count": len(datasets)}
 
@@ -76,9 +74,7 @@ def get_dataset_defaults(dataset_id: str) -> dict[str, Any]:
     try:
         schema = load_dataset_schema(dataset_id)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail=f"Dataset '{dataset_id}' not found."
-        ) from None
+        raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found.") from None
 
     return {"dataset_id": dataset_id, "defaults": build_defaults(schema)}
 
@@ -89,8 +85,6 @@ def get_random_sample(dataset_id: str) -> dict[str, Any]:
     try:
         schema = load_dataset_schema(dataset_id)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail=f"Dataset '{dataset_id}' not found."
-        ) from None
+        raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found.") from None
 
     return {"dataset_id": dataset_id, "sample": build_random_sample(schema)}

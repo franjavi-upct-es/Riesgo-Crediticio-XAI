@@ -48,9 +48,7 @@ def _load_evaluation(dataset_id: str) -> dict[str, Any]:
         data = json.load(f)
 
     _cached_evaluations[dataset_id] = data
-    logger.info(
-        "evaluation_metrics_loaded", dataset_id=dataset_id, path=str(path)
-    )
+    logger.info("evaluation_metrics_loaded", dataset_id=dataset_id, path=str(path))
     return data
 
 
@@ -97,9 +95,7 @@ def get_confusion_matrix(
     try:
         return _load_evaluation(ds)["confusion_matrix"]
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=503, detail="Evaluation data not available."
-        ) from None
+        raise HTTPException(status_code=503, detail="Evaluation data not available.") from None
 
 
 @router.get("/roc_curve")
@@ -112,9 +108,7 @@ def get_roc_curve(
         data = _load_evaluation(ds)
         return {"roc_curve": data["roc_curve"], "auc": data["metrics"]["auc"]}
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=503, detail="Evaluation data not available."
-        ) from None
+        raise HTTPException(status_code=503, detail="Evaluation data not available.") from None
 
 
 @router.get("/shap_importance")
@@ -126,9 +120,7 @@ def get_shap_importance(
     try:
         return {"shap_importance": _load_evaluation(ds)["shap_importance"]}
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=503, detail="Evaluation data not available."
-        ) from None
+        raise HTTPException(status_code=503, detail="Evaluation data not available.") from None
 
 
 @router.get("/prediction_distribution")
@@ -138,15 +130,9 @@ def get_prediction_distribution(
     """Return histogram of predicted risk probabilities."""
     ds = _resolve_dataset(dataset_id)
     try:
-        return {
-            "prediction_distribution": _load_evaluation(ds)[
-                "prediction_distribution"
-            ]
-        }
+        return {"prediction_distribution": _load_evaluation(ds)["prediction_distribution"]}
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=503, detail="Evaluation data not available."
-        ) from None
+        raise HTTPException(status_code=503, detail="Evaluation data not available.") from None
 
 
 @router.get("/full")

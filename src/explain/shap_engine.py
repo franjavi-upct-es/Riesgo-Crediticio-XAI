@@ -86,13 +86,9 @@ class ShapEngine:
             ValueError: If X does not have exactly one row.
         """
         if len(X) != 1:
-            raise ValueError(
-                f"Expected a single-row DataFrame, got {len(X)} rows."
-            )
+            raise ValueError(f"Expected a single-row DataFrame, got {len(X)} rows.")
 
-        threshold = (
-            significance_threshold or settings.shap.significance_threshold
-        )
+        threshold = significance_threshold or settings.shap.significance_threshold
 
         # Compute raw SHAP values
         shap_values_raw = self._explainer.shap_values(X)

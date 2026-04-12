@@ -106,18 +106,14 @@ async def predict_risk(
         _ctx = tracer.start_as_current_span("inference") if tracer else None
         if _ctx:
             with _ctx as span:
-                proba = float(
-                    artifacts.model.predict_proba(X_processed)[:, 1][0]
-                )
+                proba = float(artifacts.model.predict_proba(X_processed)[:, 1][0])
                 span.set_attribute("prediction.probability", proba)
                 span.set_attribute("dataset_id", ds_id)
         else:
             proba = float(artifacts.model.predict_proba(X_processed)[:, 1][0])
 
         prediction_label = (
-            "High Risk (Default)"
-            if proba > _RISK_THRESHOLD
-            else "Low Risk (No Default)"
+            "High Risk (Default)" if proba > _RISK_THRESHOLD else "Low Risk (No Default)"
         )
 
         # 4. Metrics

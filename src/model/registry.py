@@ -169,9 +169,7 @@ def list_trained_models(model_dir: Path | None = None) -> list[str]:
             trained.append(sub.name)
 
     # Also check for legacy flat layout
-    if (
-        base_dir / settings.model.filename
-    ).exists() and "german_credit" not in trained:
+    if (base_dir / settings.model.filename).exists() and "german_credit" not in trained:
         trained.insert(0, "german_credit")
 
     return trained

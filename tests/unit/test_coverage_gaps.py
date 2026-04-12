@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 from fastapi.testclient import TestClient
-
 from src.api import dependencies as deps
 
 # ---------------------------------------------------------------------------
@@ -127,9 +126,7 @@ class TestShapEngineEdgeCases:
 
         model = MagicMock()
         explainer_mock = MagicMock()
-        explainer_mock.shap_values.return_value = [
-            np.array([[0.1, 0.2, 0.3, 0.4, 0.5]])
-        ]
+        explainer_mock.shap_values.return_value = [np.array([[0.1, 0.2, 0.3, 0.4, 0.5]])]
         explainer_mock.expected_value = [0.3, 0.5]
 
         with patch(
@@ -233,9 +230,7 @@ class TestEvaluateShapFormats:
         X = pd.DataFrame({"f1": range(5), "f2": range(5)})
         y = pd.Series([0, 1, 0, 1, 0])
 
-        result = compute_and_save_evaluation(
-            model, X, y, ["f1", "f2"], Path("/tmp/test_eval.json")
-        )
+        result = compute_and_save_evaluation(model, X, y, ["f1", "f2"], Path("/tmp/test_eval.json"))
         assert len(result["shap_importance"]) == 2
 
 
@@ -325,9 +320,7 @@ class TestRegistryLegacy:
             s.model.dir = tmp_path
             s.model.filename = "xgb_model.pkl"
             s.model.feature_names_filename = "feature_names.pkl"
-            artifacts = load_model_artifacts(
-                dataset_id=None, model_dir=tmp_path
-            )
+            artifacts = load_model_artifacts(dataset_id=None, model_dir=tmp_path)
             assert artifacts.dataset_id == "german_credit"
 
     def test_list_trained_models_detects_legacy(self, tmp_path):
@@ -412,9 +405,7 @@ class TestPredictEdgeCases:
         app.dependency_overrides[verify_api_key] = lambda: None
         with (
             patch.object(deps, "_models", {"german_credit": artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": shap_engine}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": shap_engine}),
             patch.object(deps, "_drift_detectors", {}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             patch(
@@ -453,9 +444,7 @@ class TestPredictEdgeCases:
         app.dependency_overrides[verify_api_key] = lambda: None
         with (
             patch.object(deps, "_models", {"german_credit": artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": shap_engine}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": shap_engine}),
             patch.object(deps, "_drift_detectors", {}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             patch(

@@ -8,7 +8,6 @@ column mapping is complete and consistent.
 """
 
 import pandas as pd
-
 from src.data.preprocessing import (
     CATEGORICAL_FEATURES,
     COLUMN_MAPPING,
@@ -25,9 +24,7 @@ class TestColumnMapping:
 
     def test_all_values_are_unique(self):
         values = list(COLUMN_MAPPING.values())
-        assert len(values) == len(set(values)), (
-            "Duplicate column names in mapping"
-        )
+        assert len(values) == len(set(values)), "Duplicate column names in mapping"
 
     def test_keys_are_sequential_attributes(self):
         expected_keys = [f"Attribute{i}" for i in range(1, 21)]
@@ -36,9 +33,7 @@ class TestColumnMapping:
     def test_categorical_features_are_subset_of_mapping_values(self):
         mapped_names = set(COLUMN_MAPPING.values())
         for cat_feat in CATEGORICAL_FEATURES:
-            assert cat_feat in mapped_names, (
-                f"{cat_feat} not in COLUMN_MAPPING values"
-            )
+            assert cat_feat in mapped_names, f"{cat_feat} not in COLUMN_MAPPING values"
 
 
 class TestEncodeFeatures:
@@ -88,9 +83,7 @@ class TestEncodeFeatures:
 class TestPreprocessInput:
     """Verify the inference preprocessing pipeline."""
 
-    def test_output_matches_feature_names_shape(
-        self, valid_payload, sample_feature_names
-    ):
+    def test_output_matches_feature_names_shape(self, valid_payload, sample_feature_names):
         result = preprocess_input(valid_payload, sample_feature_names)
 
         assert result.shape == (1, len(sample_feature_names))
@@ -113,20 +106,14 @@ class TestPreprocessInput:
 
         assert result.shape == (1, 2)
 
-    def test_preserves_numeric_values(
-        self, valid_payload, sample_feature_names
-    ):
+    def test_preserves_numeric_values(self, valid_payload, sample_feature_names):
         result = preprocess_input(valid_payload, sample_feature_names)
 
         assert result["duration"].iloc[0] == valid_payload["duration"]
         assert result["age"].iloc[0] == valid_payload["age"]
-        assert (
-            result["credit_amount"].iloc[0] == valid_payload["credit_amount"]
-        )
+        assert result["credit_amount"].iloc[0] == valid_payload["credit_amount"]
 
-    def test_one_hot_features_are_binary(
-        self, valid_payload, sample_feature_names
-    ):
+    def test_one_hot_features_are_binary(self, valid_payload, sample_feature_names):
         result = preprocess_input(valid_payload, sample_feature_names)
 
         # Numeric columns from the original dataset are NOT one-hot
@@ -139,14 +126,10 @@ class TestPreprocessInput:
             "existing_credits",
             "num_dependents",
         }
-        one_hot_cols = [
-            c for c in sample_feature_names if c not in numeric_cols
-        ]
+        one_hot_cols = [c for c in sample_feature_names if c not in numeric_cols]
         for col in one_hot_cols:
             val = result[col].iloc[0]
-            assert val in (0, 1, True, False), (
-                f"{col} has non-binary value: {val}"
-            )
+            assert val in (0, 1, True, False), f"{col} has non-binary value: {val}"
 
     def test_raises_on_shape_mismatch(self, valid_payload):
         """This should not happen with reindex, but guards against regressions."""

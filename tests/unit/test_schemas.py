@@ -8,7 +8,6 @@ payloads pass validation cleanly.
 
 import pytest
 from pydantic import ValidationError
-
 from src.api.schemas import CreditDataRequest, PredictionResponse
 
 

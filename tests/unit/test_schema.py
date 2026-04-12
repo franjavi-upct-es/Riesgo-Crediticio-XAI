@@ -9,7 +9,6 @@ import textwrap
 from pathlib import Path
 
 import pytest
-
 from src.data.schema import (
     DatasetSchema,
     FeatureSchema,
@@ -22,9 +21,7 @@ class TestFeatureSchema:
     """Test feature-level schema behavior."""
 
     def test_categorical_feature(self):
-        f = FeatureSchema(
-            name="color", type="categorical", options=["red", "blue"]
-        )
+        f = FeatureSchema(name="color", type="categorical", options=["red", "blue"])
         assert f.is_categorical
         assert not f.is_numerical
         assert f.default_value == "red"
@@ -59,12 +56,8 @@ class TestDatasetSchema:
             target=TargetSchema(column="target", labels={0: "Good", 1: "Bad"}),
             features=[
                 FeatureSchema(name="age", type="numerical", min=18, max=99),
-                FeatureSchema(
-                    name="color", type="categorical", options=["r", "g"]
-                ),
-                FeatureSchema(
-                    name="gender", type="categorical", protected=True
-                ),
+                FeatureSchema(name="color", type="categorical", options=["r", "g"]),
+                FeatureSchema(name="gender", type="categorical", protected=True),
             ],
         )
 

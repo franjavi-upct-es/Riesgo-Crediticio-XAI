@@ -10,7 +10,7 @@ Usage::
 
     >>> from src.data.schema import load_dataset_schema
     >>> from src.data.adapter import load_dataset
-    >>> 
+    >>>
     >>> schema = load_dataset_schema("german_credit")
     >>> X, y = load_dataset(schema)
 """

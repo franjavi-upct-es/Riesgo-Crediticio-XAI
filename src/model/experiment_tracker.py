@@ -40,15 +40,12 @@ class ExperimentTracker:
                 import mlflow
 
                 mlflow.set_tracking_uri(settings.mlflow.tracking_uri)
-                mlflow.set_experiment(
-                    experiment_name or settings.mlflow.experiment_name
-                )
+                mlflow.set_experiment(experiment_name or settings.mlflow.experiment_name)
                 self._mlflow = mlflow
                 logger.info(
                     "mlflow_initialized",
                     tracking_uri=settings.mlflow.tracking_uri,
-                    experiment=experiment_name
-                    or settings.mlflow.experiment_name,
+                    experiment=experiment_name or settings.mlflow.experiment_name,
                 )
             except Exception as exc:
                 logger.warning("mlflow_init_failed", error=str(exc))
@@ -80,9 +77,7 @@ class ExperimentTracker:
         if tags:
             self._mlflow.set_tags(tags)
 
-        logger.info(
-            "mlflow_run_started", run_name=name, run_id=self._run.info.run_id
-        )
+        logger.info("mlflow_run_started", run_name=name, run_id=self._run.info.run_id)
 
         try:
             yield self
@@ -102,9 +97,7 @@ class ExperimentTracker:
         flat = {k: str(v) for k, v in params.items()}
         self._mlflow.log_params(flat)
 
-    def log_metrics(
-        self, metrics: dict[str, float], step: int | None = None
-    ) -> None:
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None) -> None:
         """Log a dictionary of numeric metrics."""
         if not self._enabled:
             return

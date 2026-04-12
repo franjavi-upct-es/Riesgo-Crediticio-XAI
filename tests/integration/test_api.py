@@ -12,12 +12,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api import dependencies as deps
 from src.api.app import create_app
 from src.api.auth import verify_api_key
 from src.explain.shap_engine import ShapEngine, ShapExplanation, ShapFactor
 from src.model.registry import ModelArtifacts
+
 from tests.conftest import SAMPLE_FEATURE_NAMES, VALID_CREDIT_PAYLOAD
 
 # ---------------------------------------------------------------------------
@@ -72,9 +72,7 @@ def client(mock_artifacts, mock_shap_engine):
     # Patch the module-level state in dependencies
     with (
         patch.object(deps, "_models", {"german_credit": mock_artifacts}),
-        patch.object(
-            deps, "_shap_engines", {"german_credit": mock_shap_engine}
-        ),
+        patch.object(deps, "_shap_engines", {"german_credit": mock_shap_engine}),
         patch.object(deps, "_drift_detectors", {}),
         patch.object(deps, "_default_dataset_id", "german_credit"),
         TestClient(app) as tc,
@@ -174,15 +172,11 @@ class TestPredictEndpoint:
             assert factor["risk_impact"] in ("increases", "reduces")
 
     def test_returns_503_when_no_model_loaded(self, client_no_model):
-        resp = client_no_model.post(
-            "/predict_risk/", json=VALID_CREDIT_PAYLOAD
-        )
+        resp = client_no_model.post("/predict_risk/", json=VALID_CREDIT_PAYLOAD)
         assert resp.status_code == 503
 
     def test_returns_503_for_unknown_dataset(self, client):
-        resp = client.post(
-            "/predict_risk/?dataset_id=nonexistent", json=VALID_CREDIT_PAYLOAD
-        )
+        resp = client.post("/predict_risk/?dataset_id=nonexistent", json=VALID_CREDIT_PAYLOAD)
         assert resp.status_code == 503
 
     def test_default_dataset_used_without_param(self, client):
@@ -212,9 +206,7 @@ class TestAuthentication:
         app = create_app()
         with (
             patch.object(deps, "_models", {"german_credit": mock_artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": mock_shap_engine}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": mock_shap_engine}),
             patch.object(deps, "_drift_detectors", {}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             TestClient(app) as tc,
@@ -227,16 +219,12 @@ class TestAuthentication:
         app.dependency_overrides.clear()
 
     @patch("src.api.auth.settings")
-    def test_passes_with_valid_header_key(
-        self, mock_settings, mock_artifacts, mock_shap_engine
-    ):
+    def test_passes_with_valid_header_key(self, mock_settings, mock_artifacts, mock_shap_engine):
         mock_settings.api.api_key = "test-secret-key"
         app = create_app()
         with (
             patch.object(deps, "_models", {"german_credit": mock_artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": mock_shap_engine}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": mock_shap_engine}),
             patch.object(deps, "_drift_detectors", {}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             TestClient(app) as tc,

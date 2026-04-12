@@ -95,9 +95,7 @@ def _init_drift_detector(ds_id: str, artifacts: ModelArtifacts) -> None:
                     ref_df = ref_df.drop(columns=[tc])
                     break
 
-            ref_df = ref_df.reindex(
-                columns=artifacts.feature_names, fill_value=0
-            )
+            ref_df = ref_df.reindex(columns=artifacts.feature_names, fill_value=0)
             ref_predictions = artifacts.model.predict_proba(ref_df)[:, 1]
 
             _drift_detectors[ds_id] = DriftDetector(

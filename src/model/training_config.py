@@ -80,9 +80,7 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
     path = config_path or DEFAULT_CONFIG_PATH
 
     if not path.exists():
-        logger.warning(
-            "training_config_not_found", path=str(path), using="defaults"
-        )
+        logger.warning("training_config_not_found", path=str(path), using="defaults")
         return TrainingConfig()
 
     with open(path) as f:
@@ -115,9 +113,7 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
         model=hyperparams,
         smote_strategy=smote_cfg.get("sampling_strategy", "minority"),
         smote_k_neighbors=smote_cfg.get("k_neighbors", 5),
-        mlflow_experiment_name=mlflow_cfg.get(
-            "experiment_name", "credit-risk-xai"
-        ),
+        mlflow_experiment_name=mlflow_cfg.get("experiment_name", "credit-risk-xai"),
         mlflow_run_name_prefix=mlflow_cfg.get("run_name_prefix", "xgb"),
         mlflow_tags=mlflow_cfg.get("tags", {}),
     )

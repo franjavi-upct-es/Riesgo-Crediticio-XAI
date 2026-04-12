@@ -7,7 +7,6 @@ sample generation via the REST API.
 
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api.app import create_app
 from src.api.auth import verify_api_key
 

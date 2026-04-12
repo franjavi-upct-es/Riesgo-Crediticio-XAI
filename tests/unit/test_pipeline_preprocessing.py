@@ -7,7 +7,6 @@ single-input transformation for the multi-dataset architecture.
 
 import pandas as pd
 import pytest
-
 from src.data.preprocessing import (
     build_preprocessing_pipeline,
     fit_and_save_pipeline,
@@ -34,9 +33,7 @@ def simple_schema() -> DatasetSchema:
         features=[
             FeatureSchema(name="age", type="numerical", min=18, max=99),
             FeatureSchema(name="income", type="numerical", min=0, max=1000000),
-            FeatureSchema(
-                name="grade", type="categorical", options=["A", "B", "C"]
-            ),
+            FeatureSchema(name="grade", type="categorical", options=["A", "B", "C"]),
             FeatureSchema(
                 name="status",
                 type="categorical",
@@ -65,9 +62,7 @@ class TestBuildPreprocessingPipeline:
         assert hasattr(pipeline, "fit")
         assert hasattr(pipeline, "transform")
 
-    def test_pipeline_has_numerical_and_categorical_transformers(
-        self, simple_schema
-    ):
+    def test_pipeline_has_numerical_and_categorical_transformers(self, simple_schema):
         pipeline = build_preprocessing_pipeline(simple_schema)
         names = [name for name, _, _ in pipeline.transformers]
         assert "num" in names
@@ -75,9 +70,7 @@ class TestBuildPreprocessingPipeline:
 
 
 class TestFitAndSavePipeline:
-    def test_fits_and_returns_feature_names(
-        self, simple_schema, sample_df, tmp_path
-    ):
+    def test_fits_and_returns_feature_names(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)
@@ -88,9 +81,7 @@ class TestFitAndSavePipeline:
         assert len(feature_names) == 5
         assert path.exists()
 
-    def test_numerical_columns_preserved(
-        self, simple_schema, sample_df, tmp_path
-    ):
+    def test_numerical_columns_preserved(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)
@@ -98,9 +89,7 @@ class TestFitAndSavePipeline:
         assert "age" in feature_names
         assert "income" in feature_names
 
-    def test_categorical_columns_one_hot_encoded(
-        self, simple_schema, sample_df, tmp_path
-    ):
+    def test_categorical_columns_one_hot_encoded(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)
@@ -142,9 +131,7 @@ class TestPreprocessWithPipeline:
         assert result.shape == (1, len(feature_names))
         assert list(result.columns) == feature_names
 
-    def test_handles_unknown_category(
-        self, simple_schema, sample_df, tmp_path
-    ):
+    def test_handles_unknown_category(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)
@@ -163,9 +150,7 @@ class TestPreprocessWithPipeline:
         grade_cols = [c for c in feature_names if c.startswith("grade")]
         assert all(result[c].iloc[0] == 0 for c in grade_cols)
 
-    def test_numerical_values_pass_through(
-        self, simple_schema, sample_df, tmp_path
-    ):
+    def test_numerical_values_pass_through(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)

@@ -9,7 +9,6 @@ import textwrap
 from pathlib import Path
 
 import pytest
-
 from src.model.training_config import (
     ModelHyperparams,
     TrainingConfig,

@@ -131,12 +131,8 @@ class DriftDetector:
         self._threshold = settings.drift.detection_threshold
         self._buffer_size = settings.drift.buffer_size
 
-        self._input_buffer: deque[np.ndarray] = deque(
-            maxlen=settings.drift.reference_window_size
-        )
-        self._prediction_buffer: deque[float] = deque(
-            maxlen=settings.drift.reference_window_size
-        )
+        self._input_buffer: deque[np.ndarray] = deque(maxlen=settings.drift.reference_window_size)
+        self._prediction_buffer: deque[float] = deque(maxlen=settings.drift.reference_window_size)
         self._lock = threading.Lock()
         self._last_report: DriftReport | None = None
 
@@ -220,10 +216,7 @@ class DriftDetector:
         # Prediction distribution drift
         pred_p_value = 1.0
         pred_drifted = False
-        if (
-            self._ref_predictions is not None
-            and len(self._ref_predictions) > 0
-        ):
+        if self._ref_predictions is not None and len(self._ref_predictions) > 0:
             try:
                 _, pred_p_value = stats.ks_2samp(
                     self._ref_predictions.astype(float),
@@ -283,9 +276,7 @@ class DriftDetector:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the last report to a JSON-compatible dict."""
-        report = self._last_report or self._empty_report(
-            reason="no_analysis_yet"
-        )
+        report = self._last_report or self._empty_report(reason="no_analysis_yet")
         return {
             "timestamp": report.timestamp,
             "n_reference": report.n_reference,

@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-
 from src.data.loader import load_uci_dataset
 
 
@@ -64,9 +63,7 @@ class TestLoadUCIDataset:
         _, y = load_uci_dataset()
         assert y.iloc[0] == 1  # 2 maps to 1
 
-    @patch(
-        "src.data.loader.fetch_ucirepo", side_effect=Exception("Network error")
-    )
+    @patch("src.data.loader.fetch_ucirepo", side_effect=Exception("Network error"))
     def test_raises_on_fetch_failure(self, mock_fetch):
         with pytest.raises(RuntimeError, match="Failed to fetch"):
             load_uci_dataset()

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.model.evaluate import compute_and_save_evaluation
 
 
@@ -71,9 +70,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer_cls.return_value = mock_explainer
 
         output = tmp_path / "eval.json"
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, output
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, output)
 
         assert "metrics" in result
         assert "confusion_matrix" in result
@@ -96,9 +93,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer.shap_values.return_value = np.random.randn(10, 3)
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         metrics = result["metrics"]
         assert "auc" in metrics
@@ -122,9 +117,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer.shap_values.return_value = np.random.randn(10, 3)
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         cm = result["confusion_matrix"]
         assert len(cm["matrix"]) == 2
@@ -145,9 +138,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer.shap_values.return_value = np.random.randn(10, 3)
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         roc = result["roc_curve"]
         assert len(roc) > 0
@@ -168,9 +159,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer.shap_values.return_value = np.random.randn(10, 3)
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         dist = result["prediction_distribution"]
         assert len(dist) == 20  # 20 bins
@@ -196,9 +185,7 @@ class TestComputeAndSaveEvaluation:
         )
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         importance = result["shap_importance"]
         values = [item["importance"] for item in importance]
@@ -242,9 +229,7 @@ class TestComputeAndSaveEvaluation:
         mock_explainer.shap_values.return_value = np.random.randn(10, 3)
         mock_explainer_cls.return_value = mock_explainer
 
-        result = compute_and_save_evaluation(
-            mock_model, X, y, feature_names, tmp_path / "e.json"
-        )
+        result = compute_and_save_evaluation(mock_model, X, y, feature_names, tmp_path / "e.json")
 
         info = result["dataset_info"]
         assert info["n_samples"] == 10

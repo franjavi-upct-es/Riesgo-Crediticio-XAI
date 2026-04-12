@@ -170,9 +170,7 @@ def train_model(
     ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     run_name = f"{cfg.mlflow_run_name_prefix}-{dataset_id}-{ts}"
 
-    with tracker.start_run(
-        run_name=run_name, tags={**cfg.mlflow_tags, "dataset_id": dataset_id}
-    ):
+    with tracker.start_run(run_name=run_name, tags={**cfg.mlflow_tags, "dataset_id": dataset_id}):
         tracker.log_params(
             {
                 "dataset_id": dataset_id,

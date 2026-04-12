@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api import dependencies as deps
 
 # ---------------------------------------------------------------------------
@@ -51,9 +50,7 @@ class TestPredictValidation:
 
         with (
             patch.object(deps, "_models", {"german_credit": artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": shap_engine}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": shap_engine}),
             patch.object(deps, "_drift_detectors", {}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             TestClient(app) as tc,
@@ -109,32 +106,22 @@ class TestPredictWithTracerAndDrift:
         # Mock OTel tracer
         mock_tracer = MagicMock()
         mock_span = MagicMock()
-        mock_tracer.start_as_current_span.return_value.__enter__ = MagicMock(
-            return_value=mock_span
-        )
-        mock_tracer.start_as_current_span.return_value.__exit__ = MagicMock(
-            return_value=False
-        )
+        mock_tracer.start_as_current_span.return_value.__enter__ = MagicMock(return_value=mock_span)
+        mock_tracer.start_as_current_span.return_value.__exit__ = MagicMock(return_value=False)
 
         app = create_app()
         app.dependency_overrides[verify_api_key] = lambda: None
 
         with (
             patch.object(deps, "_models", {"german_credit": artifacts}),
-            patch.object(
-                deps, "_shap_engines", {"german_credit": shap_engine}
-            ),
-            patch.object(
-                deps, "_drift_detectors", {"german_credit": drift_detector}
-            ),
+            patch.object(deps, "_shap_engines", {"german_credit": shap_engine}),
+            patch.object(deps, "_drift_detectors", {"german_credit": drift_detector}),
             patch.object(deps, "_default_dataset_id", "german_credit"),
             patch(
                 "src.api.routes.predict.load_dataset_schema",
                 side_effect=FileNotFoundError,
             ),
-            patch(
-                "src.api.routes.predict.get_tracer", return_value=mock_tracer
-            ),
+            patch("src.api.routes.predict.get_tracer", return_value=mock_tracer),
             TestClient(app) as tc,
         ):
             resp = tc.post(
@@ -421,9 +408,7 @@ class TestDriftKSException:
             detector.record(np.random.randn(2), 0.5)
 
         # Mock ks_2samp to raise
-        with patch(
-            "src.monitoring.drift.stats.ks_2samp", side_effect=Exception("bad")
-        ):
+        with patch("src.monitoring.drift.stats.ks_2samp", side_effect=Exception("bad")):
             report = detector.analyze()
 
         # Should fall back to stat=0, p=1.0
@@ -662,9 +647,7 @@ class TestRegistryPipelineLoading:
         (ds_dir / "feature_names.pkl").touch()
         (ds_dir / "pipeline.pkl").touch()
 
-        artifacts = load_model_artifacts(
-            dataset_id="test_ds", model_dir=tmp_path
-        )
+        artifacts = load_model_artifacts(dataset_id="test_ds", model_dir=tmp_path)
         assert artifacts.pipeline is pipeline
         assert mock_joblib.load.call_count == 3
 
@@ -774,9 +757,7 @@ class TestTrainPipelineArtifactAndDataFrame:
                 train_model(dataset_id="t")
 
         # pipeline_path logged as artifact
-        assert (
-            tracker.log_artifact.call_count == 3
-        )  # model + features + pipeline
+        assert tracker.log_artifact.call_count == 3  # model + features + pipeline
 
 
 # ---------------------------------------------------------------------------
@@ -832,15 +813,11 @@ class TestDriftPredictionKSException:
 
         def selective_raise(*args, **kwargs):
             call_count[0] += 1
-            if (
-                call_count[0] > 2
-            ):  # First 2 calls are per-feature, 3rd is prediction
+            if call_count[0] > 2:  # First 2 calls are per-feature, 3rd is prediction
                 raise RuntimeError("boom")
             return (0.1, 0.5)
 
-        with patch(
-            "src.monitoring.drift.stats.ks_2samp", side_effect=selective_raise
-        ):
+        with patch("src.monitoring.drift.stats.ks_2samp", side_effect=selective_raise):
             report = detector.analyze()
 
         assert report.prediction_drift_pvalue == 1.0
