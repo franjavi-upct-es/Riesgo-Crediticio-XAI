@@ -6,6 +6,7 @@ preprocessing pipeline, SHAP engine, and drift detector. Datasets
 are discovered from YAML schema files and trained models.
 """
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -56,7 +57,7 @@ def configure_logging() -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(settings.api.log_level)  # type: ignore[arg-type, operator]
+            logging.getLevelName(settings.api.log_level.upper())  # type: ignore[arg-type]
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),

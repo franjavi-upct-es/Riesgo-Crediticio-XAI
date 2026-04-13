@@ -76,6 +76,8 @@ class SourceSchema:
     uci_dataset_id: int | None = None
     filename: str | None = None
     url: str | None = None
+    kaggle_dataset: str | None = None
+    kaggle_filename: str | None = None
     column_mapping: dict[str, str] = field(default_factory=dict)
 
 
@@ -150,9 +152,7 @@ class DatasetSchema:
         }
 
 
-def load_dataset_schema(
-    dataset_id: str, datasets_dir: Path | None = None
-) -> DatasetSchema:
+def load_dataset_schema(dataset_id: str, datasets_dir: Path | None = None) -> DatasetSchema:
     """Load a dataset schema from its YAML definition file.
 
     Args:
@@ -215,6 +215,8 @@ def load_dataset_schema(
             uci_dataset_id=source_raw.get("uci_dataset_id"),
             filename=source_raw.get("filename"),
             url=source_raw.get("url"),
+            kaggle_dataset=source_raw.get("kaggle_dataset"),
+            kaggle_filename=source_raw.get("kaggle_filename"),
             column_mapping=source_raw.get("column_mapping", {}),
         ),
         target=TargetSchema(

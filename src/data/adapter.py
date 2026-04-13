@@ -53,9 +53,7 @@ def load_dataset(
         RuntimeError: If loading fails.
     """
     source_type = schema.source.type
-    logger.info(
-        "loading_dataset", dataset_id=schema.id, source_type=source_type
-    )
+    logger.info("loading_dataset", dataset_id=schema.id, source_type=source_type)
 
     if source_type == "uci":
         X_raw, y_raw = _load_uci(schema)
@@ -92,8 +90,7 @@ def _load_uci(schema: DatasetSchema) -> tuple[pd.DataFrame, pd.Series]:
         from ucimlrepo import fetch_ucirepo
     except ImportError as exc:
         raise RuntimeError(
-            "ucimlrepo package is required for UCI datasets. "
-            "Install it with: pip install ucimlrepo"
+            "ucimlrepo package is required for UCI datasets. Install it with: pip install ucimlrepo"
         ) from exc
 
     dataset_id = schema.source.uci_dataset_id
@@ -104,8 +101,7 @@ def _load_uci(schema: DatasetSchema) -> tuple[pd.DataFrame, pd.Series]:
         dataset = fetch_ucirepo(id=dataset_id)
     except Exception as exc:
         raise RuntimeError(
-            f"Failed to fetch UCI dataset (id={dataset_id}). "
-            "Check your network connection."
+            f"Failed to fetch UCI dataset (id={dataset_id}). Check your network connection."
         ) from exc
 
     X = dataset.data.features.copy()
@@ -121,9 +117,56 @@ def _load_uci(schema: DatasetSchema) -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def _load_csv(
-    schema: DatasetSchema, data_dir: Path
-) -> tuple[pd.DataFrame, pd.Series]:
+def _try_kaggle_download(schema: DatasetSchema, data_dir: Path, filename: str) -> Path:
+    """Try to download a CSV dataset from Kaggle via kagglehub.
+
+    If the schema has a kaggle_dataset identifier, download it and
+    copy the matching file into data_dir. Otherwise raise FileNotFoundError.
+    """
+    if not schema.source.kaggle_dataset:
+        raise FileNotFoundError(
+            f"Dataset file not found: {data_dir / filename}. "
+            f"Download it from: {schema.source.url or 'the dataset source'}"
+        )
+
+    try:
+        import kagglehub  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise RuntimeError(
+            "kagglehub package is required to auto-download Kaggle datasets. "
+            "Install it with: uv add kagglehub"
+        ) from exc
+
+    logger.info(
+        "downloading_from_kaggle",
+        dataset_id=schema.id,
+        kaggle_dataset=schema.source.kaggle_dataset,
+    )
+    kaggle_path = Path(kagglehub.dataset_download(schema.source.kaggle_dataset))
+
+    # Find the matching file in the downloaded directory (exclude directories)
+    search_name = schema.source.kaggle_filename or filename
+    candidates = [p for p in kaggle_path.rglob(search_name) if p.is_file()]
+    if not candidates:
+        # Fall back to any CSV file if the exact name doesn't match
+        candidates = [p for p in kaggle_path.rglob("*.csv") if p.is_file()]
+
+    if not candidates:
+        raise FileNotFoundError(f"No CSV files found in Kaggle download at {kaggle_path}")
+
+    source_file = candidates[0]
+    data_dir.mkdir(parents=True, exist_ok=True)
+    dest = data_dir / filename
+
+    import shutil
+
+    shutil.copy2(source_file, dest)
+    logger.info("kaggle_dataset_saved", source=str(source_file), dest=str(dest))
+
+    return dest
+
+
+def _load_csv(schema: DatasetSchema, data_dir: Path) -> tuple[pd.DataFrame, pd.Series]:
     """Load from a CSV file."""
     filename = schema.source.filename
     if filename is None:
@@ -131,15 +174,10 @@ def _load_csv(
 
     path = data_dir / filename
     if not path.exists():
-        raise FileNotFoundError(
-            f"Dataset file not found: {path}. "
-            f"Download it from: {schema.source.url or 'the dataset source'}"
-        )
+        path = _try_kaggle_download(schema, data_dir, filename)
 
-    df = pd.read_csv(path)
-    logger.info(
-        "csv_loaded", path=str(path), rows=len(df), columns=df.shape[1]
-    )
+    df = pd.read_csv(path, low_memory=False)
+    logger.info("csv_loaded", path=str(path), rows=len(df), columns=df.shape[1])
 
     # Apply column mapping if defined
     if schema.source.column_mapping:
@@ -152,13 +190,13 @@ def _load_csv(
 
     y = _extract_target(df[[target_col]], schema)
     X = df.drop(columns=[target_col], errors="ignore")
+    # Align X with y after dropping unmapped target rows
+    X = X.loc[y.index]
 
     return X, y
 
 
-def _load_parquet(
-    schema: DatasetSchema, data_dir: Path
-) -> tuple[pd.DataFrame, pd.Series]:
+def _load_parquet(schema: DatasetSchema, data_dir: Path) -> tuple[pd.DataFrame, pd.Series]:
     """Load from a Parquet file."""
     filename = schema.source.filename
     if filename is None:
@@ -176,6 +214,7 @@ def _load_parquet(
     target_col = schema.target.column
     y = _extract_target(df[[target_col]], schema)
     X = df.drop(columns=[target_col], errors="ignore")
+    X = X.loc[y.index]
 
     return X, y
 
@@ -207,6 +246,9 @@ def _extract_target(y_df: pd.DataFrame, schema: DatasetSchema) -> pd.Series:
                 mapping[float(k)] = v
 
         y = y.map(mapping)
+
+    # Drop rows with unmapped target values (NaN after mapping)
+    y = y.dropna()
 
     # Ensure binary int
     y = y.astype(int)

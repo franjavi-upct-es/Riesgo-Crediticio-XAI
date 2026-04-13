@@ -21,10 +21,28 @@ from src.monitoring.drift import DriftDetector
 logger = structlog.get_logger(__name__)
 
 # Module-level state: keyed by dataset_id
-_models: dict[str, ModelArtifacts] = {}
-_shap_engines: dict[str, ShapEngine] = {}
-_drift_detectors: dict[str, DriftDetector] = {}
+#
+# Keep stable references to the managed containers so tests can safely patch
+# the public module globals without startup repopulating them.
+_MANAGED_MODELS: dict[str, ModelArtifacts] = {}
+_MANAGED_SHAP_ENGINES: dict[str, ShapEngine] = {}
+_MANAGED_DRIFT_DETECTORS: dict[str, DriftDetector] = {}
+
+_models: dict[str, ModelArtifacts] = _MANAGED_MODELS
+_shap_engines: dict[str, ShapEngine] = _MANAGED_SHAP_ENGINES
+_drift_detectors: dict[str, DriftDetector] = _MANAGED_DRIFT_DETECTORS
 _default_dataset_id: str | None = None
+
+
+def _resources_overridden() -> bool:
+    """Return whether callers replaced the managed resource containers."""
+    return any(
+        (
+            _models is not _MANAGED_MODELS,
+            _shap_engines is not _MANAGED_SHAP_ENGINES,
+            _drift_detectors is not _MANAGED_DRIFT_DETECTORS,
+        )
+    )
 
 
 def initialize_resources() -> None:
@@ -33,6 +51,20 @@ def initialize_resources() -> None:
     Called once during application startup (lifespan context).
     """
     global _default_dataset_id
+
+    if _resources_overridden():
+        logger.info(
+            "resource_initialization_skipped",
+            reason="external_state_override",
+            loaded_models=list(_models.keys()),
+            default_dataset=_default_dataset_id,
+        )
+        return
+
+    _models.clear()
+    _shap_engines.clear()
+    _drift_detectors.clear()
+    _default_dataset_id = None
 
     trained = list_trained_models()
     if not trained:

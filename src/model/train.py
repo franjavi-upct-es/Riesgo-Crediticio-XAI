@@ -231,6 +231,12 @@ def _generate_synthetic_test_set(
     )
 
 
+def _discover_dataset_ids() -> list[str]:
+    """Return all dataset IDs found in configs/datasets/."""
+    datasets_dir = Path("configs/datasets")
+    return sorted(p.stem for p in datasets_dir.glob("*.yml"))
+
+
 def main() -> None:
     """CLI entry point for the training pipeline."""
     import argparse
@@ -240,8 +246,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train a credit risk model")
     parser.add_argument(
         "--dataset",
-        default="german_credit",
-        help="Dataset ID to train on (must have a YAML schema in configs/datasets/)",
+        default=None,
+        help="Dataset ID to train on (omit to train all datasets in configs/datasets/)",
     )
     parser.add_argument(
         "--config",
@@ -250,11 +256,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    try:
-        config_path = Path(args.config) if args.config else None
-        train_model(dataset_id=args.dataset, config_path=config_path)
-    except Exception:
-        logger.exception("training_pipeline_failed")
+    config_path = Path(args.config) if args.config else None
+    dataset_ids = [args.dataset] if args.dataset else _discover_dataset_ids()
+
+    failed = []
+    for dataset_id in dataset_ids:
+        try:
+            train_model(dataset_id=dataset_id, config_path=config_path)
+        except Exception:
+            logger.exception("training_pipeline_failed", dataset_id=dataset_id)
+            failed.append(dataset_id)
+
+    if failed:
+        logger.error("some_datasets_failed", failed=failed)
         sys.exit(1)
 
 

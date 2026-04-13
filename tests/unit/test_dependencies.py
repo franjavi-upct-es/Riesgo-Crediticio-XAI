@@ -13,6 +13,29 @@ import src.api.dependencies as deps_module
 
 
 class TestInitializeResources:
+    @patch("src.api.dependencies.load_model_artifacts")
+    @patch("src.api.dependencies.list_trained_models")
+    def test_skips_when_resource_state_is_overridden(self, mock_list, mock_load):
+        external_models = {"german_credit": MagicMock()}
+        external_shap = {"german_credit": MagicMock()}
+        external_drift = {"german_credit": MagicMock()}
+
+        with (
+            patch.object(deps_module, "_models", external_models),
+            patch.object(deps_module, "_shap_engines", external_shap),
+            patch.object(deps_module, "_drift_detectors", external_drift),
+            patch.object(deps_module, "_default_dataset_id", "german_credit"),
+        ):
+            deps_module.initialize_resources()
+
+            assert deps_module._models is external_models
+            assert deps_module._shap_engines is external_shap
+            assert deps_module._drift_detectors is external_drift
+            assert deps_module._default_dataset_id == "german_credit"
+
+        mock_list.assert_not_called()
+        mock_load.assert_not_called()
+
     @patch("src.api.dependencies.ShapEngine")
     @patch("src.api.dependencies.list_trained_models", return_value=[])
     @patch("src.api.dependencies.load_model_artifacts")

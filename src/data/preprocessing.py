@@ -12,6 +12,7 @@ identically — eliminating train/serve skew by construction.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ import joblib
 import pandas as pd
 import structlog
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 from src.data.schema import DatasetSchema
@@ -85,7 +88,12 @@ def build_preprocessing_pipeline(schema: DatasetSchema) -> ColumnTransformer:
     transformers = []
 
     if numerical_cols:
-        transformers.append(("num", "passthrough", numerical_cols))
+        num_pipeline = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="median")),
+            ]
+        )
+        transformers.append(("num", num_pipeline, numerical_cols))
 
     if categorical_cols:
         transformers.append(
@@ -132,7 +140,7 @@ def fit_and_save_pipeline(
         List of output feature names after transformation.
     """
     pipeline.fit(X)
-    feature_names = list(pipeline.get_feature_names_out())
+    feature_names = [re.sub(r"[\[\]<>]", "_", name) for name in pipeline.get_feature_names_out()]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipeline, output_path)
@@ -209,9 +217,7 @@ def encode_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
     encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-    logger.debug(
-        "features_encoded", n_raw=df.shape[1], n_encoded=encoded.shape[1]
-    )
+    logger.debug("features_encoded", n_raw=df.shape[1], n_encoded=encoded.shape[1])
     return encoded
 
 
@@ -230,8 +236,7 @@ def preprocess_input(
 
     if aligned.shape[1] != len(feature_names):  # pragma: no cover
         raise ValueError(
-            f"Feature alignment produced {aligned.shape[1]} columns, "
-            f"expected {len(feature_names)}."
+            f"Feature alignment produced {aligned.shape[1]} columns, expected {len(feature_names)}."
         )
 
     return pd.DataFrame(aligned)
