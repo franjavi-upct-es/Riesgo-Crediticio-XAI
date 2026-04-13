@@ -76,9 +76,7 @@ class TestInitializeResources:
         "src.api.dependencies.load_model_artifacts",
         side_effect=FileNotFoundError,
     )
-    def test_preserves_preconfigured_default_when_no_models(
-        self, mock_load, mock_list
-    ):
+    def test_preserves_preconfigured_default_when_no_models(self, mock_load, mock_list):
         deps_module._models.clear()
         deps_module._shap_engines.clear()
         deps_module._drift_detectors.clear()
