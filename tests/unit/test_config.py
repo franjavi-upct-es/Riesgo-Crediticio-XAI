@@ -55,3 +55,27 @@ class TestSettingsValidation:
     def test_accepts_valid_test_size(self):
         s = Settings(train={"test_size": 0.3})
         assert s.train.test_size == 0.3
+
+
+class TestEnvironmentNormalization:
+    """Verify env-sourced values are sanitized before validation."""
+
+    def test_strips_inline_comments_from_boolean_env_vars(self, monkeypatch):
+        monkeypatch.setenv(
+            "OTEL_ENABLED",
+            "false # Set true + provide collector endpoint",
+        )
+
+        s = Settings(_env_file=None)
+
+        assert s.otel.enabled is False
+
+    def test_strips_inline_comments_from_string_env_vars(self, monkeypatch):
+        monkeypatch.setenv(
+            "API_LOG_FORMAT",
+            'json # "console" for dev, "json" for production',
+        )
+
+        s = Settings(_env_file=None)
+
+        assert s.api.log_format == "json"

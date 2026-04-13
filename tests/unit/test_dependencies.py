@@ -74,6 +74,24 @@ class TestInitializeResources:
     @patch("src.api.dependencies.list_trained_models", return_value=[])
     @patch(
         "src.api.dependencies.load_model_artifacts",
+        side_effect=FileNotFoundError,
+    )
+    def test_preserves_preconfigured_default_when_no_models(
+        self, mock_load, mock_list
+    ):
+        deps_module._models.clear()
+        deps_module._shap_engines.clear()
+        deps_module._drift_detectors.clear()
+        deps_module._default_dataset_id = "german_credit"
+
+        deps_module.initialize_resources()
+
+        assert deps_module._default_dataset_id == "german_credit"
+        deps_module.shutdown_resources()
+
+    @patch("src.api.dependencies.list_trained_models", return_value=[])
+    @patch(
+        "src.api.dependencies.load_model_artifacts",
         side_effect=RuntimeError("bad"),
     )
     def test_handles_initialization_exception(self, mock_load, mock_list):

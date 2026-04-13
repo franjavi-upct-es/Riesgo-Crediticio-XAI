@@ -7,13 +7,30 @@ instead of hardcoding paths, ports, thresholds, or hyperparameters.
 Resolution order: environment variables > .env file > defaults.
 """
 
+import re
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class _APISettings(BaseSettings):
+_INLINE_ENV_COMMENT_RE = re.compile(r"\s+#.*$")
+
+
+class _CommentAwareSettings(BaseSettings):
+    """Tolerate inline comments in env-style values from external tooling."""
+
+    @field_validator("*", mode="before", check_fields=False)
+    @classmethod
+    def strip_inline_env_comments(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+
+        return _INLINE_ENV_COMMENT_RE.sub("", value).rstrip()
+
+
+class _APISettings(_CommentAwareSettings):
     """API server configuration."""
 
     host: str = "127.0.0.1"
@@ -35,7 +52,7 @@ class _APISettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="API_")
 
 
-class _ModelSettings(BaseSettings):
+class _ModelSettings(_CommentAwareSettings):
     """Model artifact paths."""
 
     dir: Path = Path("models")
@@ -53,7 +70,7 @@ class _ModelSettings(BaseSettings):
         return self.dir / self.feature_names_filename
 
 
-class _DataSettings(BaseSettings):
+class _DataSettings(_CommentAwareSettings):
     """Data paths and dataset configuration."""
 
     dir: Path = Path("data")
@@ -72,7 +89,7 @@ class _DataSettings(BaseSettings):
         return self.dir / self.evaluation_metrics_filename
 
 
-class _TrainSettings(BaseSettings):
+class _TrainSettings(_CommentAwareSettings):
     """Training hyperparameters and configuration."""
 
     test_size: float = 0.2
@@ -90,7 +107,7 @@ class _TrainSettings(BaseSettings):
         return v
 
 
-class _ShapSettings(BaseSettings):
+class _ShapSettings(_CommentAwareSettings):
     """SHAP explanation configuration."""
 
     significance_threshold: float = 0.001
@@ -98,7 +115,7 @@ class _ShapSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SHAP_")
 
 
-class _MLflowSettings(BaseSettings):
+class _MLflowSettings(_CommentAwareSettings):
     """MLflow experiment tracking configuration."""
 
     enabled: bool = True
@@ -109,7 +126,7 @@ class _MLflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="MLFLOW_")
 
 
-class _OtelSettings(BaseSettings):
+class _OtelSettings(_CommentAwareSettings):
     """OpenTelemetry distributed tracing configuration."""
 
     enabled: bool = False
@@ -119,7 +136,7 @@ class _OtelSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OTEL_")
 
 
-class _DriftSettings(BaseSettings):
+class _DriftSettings(_CommentAwareSettings):
     """Data and model drift detection configuration."""
 
     reference_window_size: int = 200  # Number of reference samples to keep
@@ -129,7 +146,7 @@ class _DriftSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DRIFT_")
 
 
-class Settings(BaseSettings):
+class Settings(_CommentAwareSettings):
     """Root settings object aggregating all configuration sections.
 
     Usage::

@@ -51,6 +51,7 @@ def initialize_resources() -> None:
     Called once during application startup (lifespan context).
     """
     global _default_dataset_id
+    configured_default_dataset_id = _default_dataset_id
 
     if _resources_overridden():
         logger.info(
@@ -82,6 +83,8 @@ def initialize_resources() -> None:
             )
         except Exception:
             logger.exception("resource_initialization_failed")
+        if _default_dataset_id is None:
+            _default_dataset_id = configured_default_dataset_id
         return
 
     for ds_id in trained:
@@ -103,6 +106,9 @@ def initialize_resources() -> None:
             )
         except Exception:
             logger.exception("model_load_failed", dataset_id=ds_id)
+
+    if _default_dataset_id is None:
+        _default_dataset_id = configured_default_dataset_id
 
     logger.info(
         "all_resources_initialized",
@@ -153,7 +159,7 @@ def get_model_artifacts(
     dataset_id: str | None = None,
 ) -> ModelArtifacts | None:
     """Get model artifacts for a dataset."""
-    ds_id = dataset_id or _default_dataset_id
+    ds_id = resolve_dataset_id(dataset_id)
     if ds_id is None:
         return None
     return _models.get(ds_id)
@@ -161,7 +167,7 @@ def get_model_artifacts(
 
 def get_shap_engine(dataset_id: str | None = None) -> ShapEngine | None:
     """Get SHAP engine for a dataset."""
-    ds_id = dataset_id or _default_dataset_id
+    ds_id = resolve_dataset_id(dataset_id)
     if ds_id is None:
         return None
     return _shap_engines.get(ds_id)
@@ -169,7 +175,7 @@ def get_shap_engine(dataset_id: str | None = None) -> ShapEngine | None:
 
 def get_drift_detector(dataset_id: str | None = None) -> DriftDetector | None:
     """Get drift detector for a dataset."""
-    ds_id = dataset_id or _default_dataset_id
+    ds_id = resolve_dataset_id(dataset_id)
     if ds_id is None:
         return None
     return _drift_detectors.get(ds_id)
@@ -178,6 +184,11 @@ def get_drift_detector(dataset_id: str | None = None) -> DriftDetector | None:
 def get_loaded_datasets() -> list[str]:
     """Return list of dataset IDs with loaded models."""
     return list(_models.keys())
+
+
+def resolve_dataset_id(dataset_id: str | None = None) -> str | None:
+    """Resolve a request dataset ID, falling back to the configured default."""
+    return dataset_id or _default_dataset_id
 
 
 def get_default_dataset_id() -> str | None:

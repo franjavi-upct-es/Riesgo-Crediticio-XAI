@@ -15,10 +15,10 @@ from pydantic import ValidationError
 
 from src.api.auth import verify_api_key
 from src.api.dependencies import (
-    get_default_dataset_id,
     get_drift_detector,
     get_model_artifacts,
     get_shap_engine,
+    resolve_dataset_id,
 )
 from src.api.dynamic_schema import build_request_validator
 from src.api.schemas import (
@@ -61,7 +61,7 @@ async def predict_risk(
         dataset_id: Which model to use (e.g., 'german_credit', 'lending_club').
     """
     # Resolve dataset
-    ds_id = dataset_id or get_default_dataset_id()
+    ds_id = resolve_dataset_id(dataset_id)
     if ds_id is None:
         raise HTTPException(status_code=503, detail="No models loaded.")
 

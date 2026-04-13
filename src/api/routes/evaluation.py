@@ -13,7 +13,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.dependencies import get_default_dataset_id
+from src.api.dependencies import resolve_dataset_id
 from src.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -62,7 +62,7 @@ def clear_evaluation_cache(dataset_id: str | None = None) -> None:
 
 def _resolve_dataset(dataset_id: str | None) -> str:
     """Resolve dataset ID with fallback to default."""
-    ds_id = dataset_id or get_default_dataset_id()
+    ds_id = resolve_dataset_id(dataset_id)
     if ds_id is None:
         raise HTTPException(status_code=503, detail="No models loaded.")
     return ds_id

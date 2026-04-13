@@ -582,7 +582,7 @@ class TestResolveDatasetNone:
 
         with (
             patch(
-                "src.api.routes.evaluation.get_default_dataset_id",
+                "src.api.routes.evaluation.resolve_dataset_id",
                 return_value=None,
             ),
             pytest.raises(Exception),
