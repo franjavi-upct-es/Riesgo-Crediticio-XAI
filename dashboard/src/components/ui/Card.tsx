@@ -14,15 +14,15 @@ export default function Card({ title, subtitle, children, className }: Props) {
   return (
     <div
       className={clsx(
-        "rounded-card border border-slate-200 bg-white p-5",
+        "rounded-card border border-border bg-card p-5 text-card-foreground shadow-sm transition-colors",
         className,
       )}
     >
       {title && (
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           {subtitle && (
-            <p className="mt-0.5 text-xs text-accent-muted">{subtitle}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
           )}
         </div>
       )}

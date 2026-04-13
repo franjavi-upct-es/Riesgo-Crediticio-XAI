@@ -40,8 +40,6 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["prediction"])
 
-_RISK_THRESHOLD = 0.5
-
 
 @router.post("/predict_risk/", response_model=PredictionResponse)
 async def predict_risk(
@@ -113,8 +111,9 @@ async def predict_risk(
         else:
             proba = float(artifacts.model.predict_proba(X_processed)[:, 1][0])
 
+        prediction_threshold = artifacts.decision_threshold
         prediction_label = (
-            "High Risk (Default)" if proba > _RISK_THRESHOLD else "Low Risk (No Default)"
+            "High Risk (Default)" if proba >= prediction_threshold else "Low Risk (No Default)"
         )
 
         # 4. Metrics
@@ -125,6 +124,7 @@ async def predict_risk(
             "prediction_made",
             dataset_id=ds_id,
             probability=round(proba, 4),
+            decision_threshold=round(prediction_threshold, 4),
             label=prediction_label,
         )
 

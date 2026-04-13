@@ -41,6 +41,20 @@ export interface DatasetsListResponse {
 
 // --- Prediction ---
 
+/**
+ * Validated prediction payload sent to the API.
+ *
+ * Keys are dataset-driven (resolved at runtime from the schema), but
+ * each value is narrowed to `number | string` by the Zod resolver before
+ * the mutation fires — no `unknown` reaches the wire.
+ */
+export type PredictionPayload = Record<string, number | string>;
+
+export interface RandomSampleResponse {
+  dataset_id: string;
+  sample: PredictionPayload;
+}
+
 export interface ShapFactor {
   factor: string;
   risk_impact: "increases" | "reduces";

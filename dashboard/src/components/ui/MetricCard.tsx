@@ -12,17 +12,19 @@ interface Props {
 }
 
 const variantStyles = {
-  default: "border-slate-200 bg-white",
-  success: "border-emerald-200 bg-emerald-50/50",
-  danger: "border-red-200 bg-red-50/50",
-  info: "border-sky-200 bg-sky-50/50",
+  default: "border-border bg-card",
+  success:
+    "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20",
+  danger:
+    "border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-950/20",
+  info: "border-sky-200 bg-sky-50/50 dark:border-sky-900/40 dark:bg-sky-950/20",
 };
 
 const valueStyles = {
-  default: "text-slate-900",
-  success: "text-emerald-700",
-  danger: "text-red-700",
-  info: "text-sky-700",
+  default: "text-foreground",
+  success: "text-emerald-700 dark:text-emerald-300",
+  danger: "text-red-700 dark:text-red-300",
+  info: "text-sky-700 dark:text-sky-300",
 };
 
 export default function MetricCard({
@@ -40,10 +42,10 @@ export default function MetricCard({
       )}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-accent-subtle">{label}</span>
-        {icon && (
-          <span className="text-accent-muted">{icon}</span>
-        )}
+        <span className="text-sm font-medium text-muted-foreground">
+          {label}
+        </span>
+        {icon && <span className="text-muted-foreground">{icon}</span>}
       </div>
       <p
         className={clsx(
@@ -54,7 +56,7 @@ export default function MetricCard({
         {value}
       </p>
       {subtitle && (
-        <p className="mt-0.5 text-xs text-accent-muted">{subtitle}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
       )}
     </div>
   );

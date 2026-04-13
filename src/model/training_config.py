@@ -59,7 +59,11 @@ class TrainingConfig:
     """Complete training pipeline configuration."""
 
     test_size: float = 0.2
+    validation_size: float = 0.15
     random_state: int = 42
+    early_stopping_rounds: int = 30
+    tuning_cv_folds: int = 5
+    threshold_metric: str = "f1"
     model: ModelHyperparams = field(default_factory=ModelHyperparams)
     smote_strategy: str = "minority"
     smote_k_neighbors: int = 5
@@ -90,6 +94,9 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
 
     data_cfg = raw.get("data", {})
     model_cfg = raw.get("model", {})
+    validation_cfg = raw.get("validation", {})
+    tuning_cfg = raw.get("tuning", {})
+    threshold_cfg = raw.get("threshold", {})
     smote_cfg = raw.get("smote", {})
     mlflow_cfg = raw.get("mlflow", {})
 
@@ -109,7 +116,11 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
 
     return TrainingConfig(
         test_size=data_cfg.get("test_size", 0.2),
+        validation_size=validation_cfg.get("size", 0.15),
         random_state=data_cfg.get("random_state", 42),
+        early_stopping_rounds=validation_cfg.get("early_stopping_rounds", 30),
+        tuning_cv_folds=tuning_cfg.get("cv_folds", 5),
+        threshold_metric=threshold_cfg.get("metric", "f1"),
         model=hyperparams,
         smote_strategy=smote_cfg.get("sampling_strategy", "minority"),
         smote_k_neighbors=smote_cfg.get("k_neighbors", 5),

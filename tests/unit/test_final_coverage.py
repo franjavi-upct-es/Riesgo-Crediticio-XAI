@@ -524,12 +524,13 @@ class TestTrainMLflowArtifacts:
         mock_ds.return_value = (X, y)
 
         pipe = MagicMock()
-        pipe.transform.return_value = np.random.randn(20, 2)
+        pipe.transform.side_effect = lambda frame: np.random.randn(len(frame), 2)
         mock_build.return_value = pipe
         mock_fit.return_value = ["a", "a_sq"]
 
         model_mock = MagicMock()
         model_mock.fit.return_value = None
+        model_mock.predict_proba.side_effect = lambda frame: np.tile([0.4, 0.6], (len(frame), 1))
         mock_xgb.return_value = model_mock
 
         smote_mock = MagicMock()
@@ -709,7 +710,7 @@ class TestTrainPipelineArtifactAndDataFrame:
         mock_ds.return_value = (X, y)
 
         pipe = MagicMock()
-        pipe.transform.return_value = np.random.randn(20, 2)
+        pipe.transform.side_effect = lambda frame: np.random.randn(len(frame), 2)
         mock_build.return_value = pipe
 
         # fit_and_save_pipeline must create the file so pipeline_path.exists() is True
@@ -722,6 +723,7 @@ class TestTrainPipelineArtifactAndDataFrame:
 
         model_mock = MagicMock()
         model_mock.fit.return_value = None
+        model_mock.predict_proba.side_effect = lambda frame: np.tile([0.4, 0.6], (len(frame), 1))
         mock_xgb.return_value = model_mock
 
         # Return a DataFrame (not Series) from SMOTE → covers line 213
@@ -756,8 +758,8 @@ class TestTrainPipelineArtifactAndDataFrame:
                 s.data.dir = tmp_path / "data"
                 train_model(dataset_id="t")
 
-        # pipeline_path logged as artifact
-        assert tracker.log_artifact.call_count == 3  # model + features + pipeline
+        # pipeline_path and threshold_path are both logged as artifacts
+        assert tracker.log_artifact.call_count == 4
 
 
 # ---------------------------------------------------------------------------

@@ -36,6 +36,7 @@ def mock_artifacts():
         pipeline=None,
         model_path=Path("models/german_credit/model.pkl"),
         dataset_id="german_credit",
+        decision_threshold=0.5,
     )
 
 
@@ -159,6 +160,36 @@ class TestPredictEndpoint:
         body = resp.json()
         assert "Low Risk" in body["prediction"]
         assert body["probability_of_risk"] == 0.3
+
+    def test_uses_model_specific_decision_threshold(self, mock_artifacts, mock_shap_engine):
+        mock_artifacts.model.predict_proba.return_value = np.array([[0.55, 0.45]])
+        mock_artifacts = ModelArtifacts(
+            model=mock_artifacts.model,
+            feature_names=mock_artifacts.feature_names,
+            pipeline=mock_artifacts.pipeline,
+            model_path=mock_artifacts.model_path,
+            dataset_id=mock_artifacts.dataset_id,
+            decision_threshold=0.4,
+        )
+
+        app = create_app()
+        app.dependency_overrides[verify_api_key] = lambda: None
+
+        with (
+            patch.object(deps, "_models", {"german_credit": mock_artifacts}),
+            patch.object(deps, "_shap_engines", {"german_credit": mock_shap_engine}),
+            patch.object(deps, "_drift_detectors", {}),
+            patch.object(deps, "_default_dataset_id", "german_credit"),
+            TestClient(app) as tc,
+        ):
+            resp = tc.post(
+                "/predict_risk/?dataset_id=german_credit",
+                json=VALID_CREDIT_PAYLOAD,
+            )
+
+        assert resp.status_code == 200
+        assert "High Risk" in resp.json()["prediction"]
+        app.dependency_overrides.clear()
 
     def test_explanation_factors_have_correct_fields(self, client):
         resp = client.post(

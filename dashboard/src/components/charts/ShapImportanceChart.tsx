@@ -30,31 +30,62 @@ export default function ShapImportanceChart({
       title="Global feature importance"
       subtitle={`Top ${maxFeatures} features by mean |SHAP|`}
     >
-      <ResponsiveContainer width="100%" height={Math.max(280, sorted.length * 28)}>
+      <ResponsiveContainer
+        width="100%"
+        height={Math.max(280, sorted.length * 28)}
+      >
         <BarChart
           data={sorted}
           layout="vertical"
           margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="hsl(var(--border))"
+            strokeOpacity={0.5}
+            horizontal={false}
+          />
           <XAxis
             type="number"
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            label={{ value: "Mean |SHAP value|", position: "insideBottom", offset: -2, fontSize: 12, fill: "#64748b" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            stroke="hsl(var(--border))"
+            label={{
+              value: "Mean |SHAP value|",
+              position: "insideBottom",
+              offset: -2,
+              fontSize: 12,
+              fill: "hsl(var(--muted-foreground))",
+            }}
           />
           <YAxis
             dataKey="feature"
             type="category"
             width={160}
-            tick={{ fontSize: 11, fill: "#475569" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }}
+            stroke="hsl(var(--border))"
           />
           <Tooltip
-            formatter={(v: number) => v.toFixed(6)}
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+            cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.[0]) return null;
+              const d = payload[0].payload as ShapImportance;
+              return (
+                <div className="surface-glass rounded-lg px-3 py-2 text-xs shadow-lg">
+                  <p className="font-semibold text-foreground">{d.feature}</p>
+                  <p className="text-muted-foreground">
+                    Importance:{" "}
+                    <span className="font-mono text-foreground">
+                      {d.importance.toFixed(6)}
+                    </span>
+                  </p>
+                </div>
+              );
+            }}
           />
           <Bar
             dataKey="importance"
-            fill="#7c3aed"
+            fill="hsl(var(--primary))"
+            fillOpacity={0.8}
             radius={[0, 4, 4, 0]}
             barSize={16}
           />

@@ -46,7 +46,11 @@ class TestTrainingConfig:
     def test_defaults(self):
         cfg = TrainingConfig()
         assert cfg.test_size == 0.2
+        assert cfg.validation_size == 0.15
         assert cfg.random_state == 42
+        assert cfg.early_stopping_rounds == 30
+        assert cfg.tuning_cv_folds == 5
+        assert cfg.threshold_metric == "f1"
         assert cfg.smote_strategy == "minority"
         assert cfg.mlflow_experiment_name == "credit-risk-xai"
 
@@ -71,6 +75,13 @@ class TestLoadTrainingConfig:
             data:
               test_size: 0.3
               random_state: 99
+            validation:
+              size: 0.25
+              early_stopping_rounds: 40
+            tuning:
+              cv_folds: 4
+            threshold:
+              metric: f1
             model:
               n_estimators: 250
               learning_rate: 0.05
@@ -89,7 +100,11 @@ class TestLoadTrainingConfig:
         cfg = load_training_config(config_file)
 
         assert cfg.test_size == 0.3
+        assert cfg.validation_size == 0.25
         assert cfg.random_state == 99
+        assert cfg.early_stopping_rounds == 40
+        assert cfg.tuning_cv_folds == 4
+        assert cfg.threshold_metric == "f1"
         assert cfg.model.n_estimators == 250
         assert cfg.model.learning_rate == 0.05
         assert cfg.model.max_depth == 8
@@ -113,6 +128,7 @@ class TestLoadTrainingConfig:
         assert cfg.model.n_estimators == 50
         # Everything else defaults
         assert cfg.test_size == 0.2
+        assert cfg.validation_size == 0.15
         assert cfg.model.learning_rate == 0.1
         assert cfg.random_state == 42
 

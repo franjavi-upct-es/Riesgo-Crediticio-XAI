@@ -22,7 +22,7 @@ import structlog
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.data.schema import DatasetSchema
 
@@ -91,6 +91,7 @@ def build_preprocessing_pipeline(schema: DatasetSchema) -> ColumnTransformer:
         num_pipeline = Pipeline(
             [
                 ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
             ]
         )
         transformers.append(("num", num_pipeline, numerical_cols))

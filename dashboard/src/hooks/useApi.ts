@@ -9,6 +9,7 @@ import {
   fetchRandomSample,
   postPrediction,
 } from "@/api/client";
+import type { PredictionPayload } from "@/types/api";
 
 export function useHealth() {
   return useQuery({
@@ -43,23 +44,24 @@ export function useRandomSample(datasetId: string | null) {
   });
 }
 
-export function useEvaluation() {
+export function useEvaluation(datasetId: string | null) {
   return useQuery({
-    queryKey: ["evaluation"],
-    queryFn: fetchFullEvaluation,
+    queryKey: ["evaluation", datasetId],
+    queryFn: () => fetchFullEvaluation(datasetId!),
+    enabled: !!datasetId,
     staleTime: 5 * 60_000,
     retry: 1,
   });
 }
 
+export interface PredictionMutationInput {
+  data: PredictionPayload;
+  datasetId?: string;
+}
+
 export function usePrediction() {
   return useMutation({
-    mutationFn: ({
-      data,
-      datasetId,
-    }: {
-      data: Record<string, unknown>;
-      datasetId?: string;
-    }) => postPrediction(data, datasetId),
+    mutationFn: ({ data, datasetId }: PredictionMutationInput) =>
+      postPrediction(data, datasetId),
   });
 }

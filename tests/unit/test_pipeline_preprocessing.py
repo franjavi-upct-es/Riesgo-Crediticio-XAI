@@ -150,7 +150,7 @@ class TestPreprocessWithPipeline:
         grade_cols = [c for c in feature_names if c.startswith("grade")]
         assert all(result[c].iloc[0] == 0 for c in grade_cols)
 
-    def test_numerical_values_pass_through(self, simple_schema, sample_df, tmp_path):
+    def test_numerical_values_are_scaled(self, simple_schema, sample_df, tmp_path):
         pipeline = build_preprocessing_pipeline(simple_schema)
         path = tmp_path / "pipeline.pkl"
         feature_names = fit_and_save_pipeline(pipeline, sample_df, path)
@@ -163,5 +163,7 @@ class TestPreprocessWithPipeline:
         }
         result = preprocess_with_pipeline(input_dict, pipeline, feature_names)
 
-        assert result["age"].iloc[0] == 42
-        assert result["income"].iloc[0] == 75000
+        assert result["age"].iloc[0] != 42
+        assert result["income"].iloc[0] != 75000
+        assert abs(result["age"].iloc[0]) < 3
+        assert abs(result["income"].iloc[0]) < 3

@@ -36,6 +36,7 @@ data/
 artifacts/
 mlruns/
 !src/data
+!dashboard/src/lib
 
 # ================================
 # Test and coverage output
@@ -77,3 +78,4 @@ docker-compose.override.yml
 node_modules/
 dashboard/dist/
 dashboard/.cache/
+.claude/

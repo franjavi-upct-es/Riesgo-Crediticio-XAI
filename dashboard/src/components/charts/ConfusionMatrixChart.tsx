@@ -22,7 +22,7 @@ export default function ConfusionMatrixChart({ data }: Props) {
               {labels.map((l) => (
                 <th
                   key={l}
-                  className="px-3 py-2 text-center text-xs font-medium text-accent-subtle"
+                  className="px-3 py-2 text-center text-xs font-medium text-muted-foreground"
                 >
                   Pred: {l}
                 </th>
@@ -32,7 +32,7 @@ export default function ConfusionMatrixChart({ data }: Props) {
           <tbody>
             {matrix.map((row, i) => (
               <tr key={i}>
-                <td className="px-3 py-2 text-right text-xs font-medium text-accent-subtle">
+                <td className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">
                   True: {labels[i]}
                 </td>
                 {row.map((cell, j) => {
@@ -44,13 +44,13 @@ export default function ConfusionMatrixChart({ data }: Props) {
                         className={clsx(
                           "flex h-16 w-24 items-center justify-center rounded-lg font-mono text-lg font-semibold transition-colors",
                           isDiagonal
-                            ? "text-emerald-900"
-                            : "text-red-900",
+                            ? "text-emerald-900 dark:text-emerald-200"
+                            : "text-red-900 dark:text-red-200",
                         )}
                         style={{
                           backgroundColor: isDiagonal
-                            ? `rgba(16, 185, 129, ${0.12 + intensity * 0.4})`
-                            : `rgba(239, 68, 68, ${0.08 + intensity * 0.3})`,
+                            ? `rgba(52, 211, 153, ${0.12 + intensity * 0.4})`
+                            : `rgba(248, 113, 113, ${0.08 + intensity * 0.3})`,
                         }}
                       >
                         {cell}

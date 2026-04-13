@@ -10,7 +10,8 @@ Directory layout:
     ├── german_credit/
     │   ├── model.pkl
     │   ├── feature_names.pkl
-    │   └── pipeline.pkl
+    │   ├── pipeline.pkl
+    │   └── threshold.json
     ├── lending_club/
     │   ├── model.pkl
     │   ├── feature_names.pkl
@@ -18,6 +19,7 @@ Directory layout:
     └── ...
 """
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,6 +49,7 @@ class ModelArtifacts:
     pipeline: Any | None
     model_path: Path
     dataset_id: str
+    decision_threshold: float = 0.5
 
     def validate(self) -> None:
         """Run basic sanity checks on loaded artifacts.
@@ -59,6 +62,9 @@ class ModelArtifacts:
 
         if not self.feature_names:
             raise ValueError("feature_names is empty.")
+
+        if not 0.0 <= self.decision_threshold <= 1.0:
+            raise ValueError("decision_threshold must be between 0 and 1.")
 
         n_model_features = self.model.n_features_in_
         n_saved_features = len(self.feature_names)
@@ -106,11 +112,13 @@ def load_model_artifacts(
         model_path = ds_dir / "model.pkl"
         features_path = ds_dir / "feature_names.pkl"
         pipeline_path = ds_dir / "pipeline.pkl"
+        threshold_path = ds_dir / "threshold.json"
     else:
         # Legacy flat layout (backward compat)
         model_path = base_dir / settings.model.filename
         features_path = base_dir / settings.model.feature_names_filename
         pipeline_path = base_dir / "pipeline.pkl"
+        threshold_path = base_dir / "threshold.json"
         dataset_id = "german_credit"  # Default assumption
 
     for path, label in [
@@ -138,12 +146,24 @@ def load_model_artifacts(
         pipeline = joblib.load(pipeline_path)
         logger.info("preprocessing_pipeline_loaded", path=str(pipeline_path))
 
+    decision_threshold = 0.5
+    if threshold_path.exists():
+        with open(threshold_path) as f:
+            threshold_payload = json.load(f) or {}
+        decision_threshold = float(threshold_payload.get("decision_threshold", 0.5))
+        logger.info(
+            "decision_threshold_loaded",
+            path=str(threshold_path),
+            decision_threshold=round(decision_threshold, 4),
+        )
+
     artifacts = ModelArtifacts(
         model=model,
         feature_names=feature_names,
         pipeline=pipeline,
         model_path=model_path,
         dataset_id=dataset_id,
+        decision_threshold=decision_threshold,
     )
     artifacts.validate()
 

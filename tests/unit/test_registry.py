@@ -1,6 +1,7 @@
 # tests/unit/test_registry.py
 """Unit tests for src.model.registry (multi-dataset)."""
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -80,6 +81,18 @@ class TestModelArtifacts:
         )
         assert artifacts.dataset_id == "lending_club"
 
+    def test_validate_fails_on_invalid_threshold(self, mock_xgb_model, sample_feature_names):
+        artifacts = ModelArtifacts(
+            model=mock_xgb_model,
+            feature_names=sample_feature_names,
+            pipeline=None,
+            model_path=Path("models/model.pkl"),
+            dataset_id="test",
+            decision_threshold=1.5,
+        )
+        with pytest.raises(ValueError, match="decision_threshold"):
+            artifacts.validate()
+
 
 class TestLoadModelArtifacts:
     def test_raises_file_not_found_when_model_missing(self, tmp_path):
@@ -107,6 +120,21 @@ class TestLoadModelArtifacts:
         assert artifacts.feature_names == sample_feature_names
         assert artifacts.dataset_id == "test"
         assert mock_joblib.load.call_count == 2
+
+    @patch("src.model.registry.joblib")
+    def test_loads_decision_threshold(
+        self, mock_joblib, tmp_path, mock_xgb_model, sample_feature_names
+    ):
+        ds_dir = tmp_path / "test"
+        ds_dir.mkdir()
+        (ds_dir / "model.pkl").touch()
+        (ds_dir / "feature_names.pkl").touch()
+        (ds_dir / "threshold.json").write_text(json.dumps({"decision_threshold": 0.37}))
+
+        mock_joblib.load.side_effect = [mock_xgb_model, sample_feature_names]
+
+        artifacts = load_model_artifacts(dataset_id="test", model_dir=tmp_path)
+        assert artifacts.decision_threshold == 0.37
 
 
 class TestListTrainedModels:

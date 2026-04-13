@@ -35,6 +35,7 @@ def compute_and_save_evaluation(
     y_test: pd.Series,
     feature_names: list[str],
     output_path: Path | None = None,
+    decision_threshold: float = 0.5,
 ) -> dict:
     """Compute full evaluation metrics and persist as JSON.
 
@@ -43,6 +44,7 @@ def compute_and_save_evaluation(
         X_test: Test features (encoded).
         y_test: True labels.
         feature_names: Ordered feature names.
+        decision_threshold: Probability cutoff used to convert scores into labels.
         output_path: Where to save the JSON. Defaults to config path.
 
     Returns:
@@ -52,13 +54,13 @@ def compute_and_save_evaluation(
     logger.info("evaluation_started", n_samples=len(X_test))
 
     y_proba = model.predict_proba(X_test)[:, 1]
-    y_pred = (y_proba > 0.5).astype(int)
+    y_pred = (y_proba >= decision_threshold).astype(int)
 
     # --- Classification metrics ---
     auc = float(roc_auc_score(y_test, y_proba))
-    f1 = float(f1_score(y_test, y_pred))
-    precision = float(precision_score(y_test, y_pred))
-    recall = float(recall_score(y_test, y_pred))
+    f1 = float(f1_score(y_test, y_pred, zero_division=0))
+    precision = float(precision_score(y_test, y_pred, zero_division=0))
+    recall = float(recall_score(y_test, y_pred, zero_division=0))
 
     # --- Confusion matrix ---
     cm = confusion_matrix(y_test, y_pred).tolist()
@@ -112,6 +114,7 @@ def compute_and_save_evaluation(
             "precision": round(precision, 4),
             "recall": round(recall, 4),
         },
+        "decision_threshold": round(float(decision_threshold), 4),
         "confusion_matrix": {
             "matrix": cm,
             "labels": ["No Default (0)", "Default (1)"],
@@ -136,6 +139,7 @@ def compute_and_save_evaluation(
         path=str(out),
         auc=result["metrics"]["auc"],  # type: ignore[index]
         f1=result["metrics"]["f1"],  # type: ignore[index]
+        decision_threshold=result["decision_threshold"],  # type: ignore[index]
     )
 
     return result

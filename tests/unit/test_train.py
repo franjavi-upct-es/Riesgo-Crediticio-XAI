@@ -102,14 +102,14 @@ class TestTrainModel:
 
         # Pipeline mock
         pipe = MagicMock()
-        transformed = np.random.randn(len(X), 4)
-        pipe.transform.return_value = transformed
+        pipe.transform.side_effect = lambda frame: np.random.randn(len(frame), 4)
         mock_build_pipe.return_value = pipe
         mock_fit_pipe.return_value = ["age", "income", "grade_B", "grade_C"]
 
         # XGBoost mock
         model = MagicMock()
         model.fit.return_value = None
+        model.predict_proba.side_effect = lambda frame: np.tile([0.4, 0.6], (len(frame), 1))
         mock_xgb_cls.return_value = model
 
         # SMOTE mock
@@ -140,7 +140,7 @@ class TestTrainModel:
 
         mock_build_pipe.assert_called_once_with(mock_schema)
         mock_fit_pipe.assert_called_once()
-        model.fit.assert_called_once()
+        assert model.fit.call_count >= 1
         mock_eval.assert_called_once()
         tracker.start_run.assert_called_once()
         tracker.log_params.assert_called_once()
@@ -174,7 +174,12 @@ class TestMainCLI:
     def test_main_calls_train(self, mock_structlog, mock_train):
         with patch("sys.argv", ["train", "--dataset", "german_credit"]):
             train_module.main()
-        mock_train.assert_called_once_with(dataset_id="german_credit", config_path=None)
+        mock_train.assert_called_once_with(
+            dataset_id="german_credit",
+            config_path=None,
+            tune=True,
+            n_trials=50,
+        )
 
     @patch("src.model.train.train_model", side_effect=Exception("boom"))
     @patch("src.model.train.structlog")

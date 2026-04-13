@@ -5,7 +5,9 @@ import type {
   DatasetSchemaResponse,
   FullEvaluation,
   HealthResponse,
+  PredictionPayload,
   PredictionResponse,
+  RandomSampleResponse,
 } from "@/types/api";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "";
@@ -54,14 +56,14 @@ export function fetchDatasetSchema(
 
 export function fetchRandomSample(
   datasetId: string,
-): Promise<{ dataset_id: string; sample: Record<string, unknown> }> {
-  return request(`/datasets/${datasetId}/random`);
+): Promise<RandomSampleResponse> {
+  return request<RandomSampleResponse>(`/datasets/${datasetId}/random`);
 }
 
 // --- Prediction ---
 
 export function postPrediction(
-  data: Record<string, unknown>,
+  data: PredictionPayload,
   datasetId?: string,
 ): Promise<PredictionResponse> {
   const qs = datasetId ? `?dataset_id=${datasetId}` : "";
@@ -73,8 +75,11 @@ export function postPrediction(
 
 // --- Evaluation ---
 
-export function fetchFullEvaluation(): Promise<FullEvaluation> {
-  return request<FullEvaluation>("/evaluation/full");
+export function fetchFullEvaluation(
+  datasetId?: string,
+): Promise<FullEvaluation> {
+  const qs = datasetId ? `?dataset_id=${datasetId}` : "";
+  return request<FullEvaluation>(`/evaluation/full${qs}`);
 }
 
 export { ApiError };

@@ -9,6 +9,16 @@ data:
   test_size: 0.2
   random_state: 42
 
+validation:
+  size: 0.15
+  early_stopping_rounds: 30
+
+tuning:
+  cv_folds: 5
+
+threshold:
+  metric: "f1"
+
 model:
   objective: "binary:logistic"
   eval_metric: "logloss"

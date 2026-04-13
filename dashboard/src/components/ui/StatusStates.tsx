@@ -1,10 +1,11 @@
 // dashboard/src/components/ui/StatusStates.tsx
 
 import { AlertTriangle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function LoadingState({ message = "Loading…" }: { message?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-20 text-accent-muted">
+    <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
       <Loader2 size={28} className="animate-spin" />
       <span className="text-sm">{message}</span>
     </div>
@@ -22,20 +23,17 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-20">
-      <AlertTriangle size={28} className="text-red-500" />
-      <p className="font-medium text-slate-800">{title}</p>
+      <AlertTriangle size={28} className="text-destructive" />
+      <p className="font-medium text-foreground">{title}</p>
       {message && (
-        <p className="max-w-md text-center text-sm text-accent-muted">
+        <p className="max-w-md text-center text-sm text-muted-foreground">
           {message}
         </p>
       )}
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-        >
+        <Button onClick={onRetry} className="mt-2">
           Try again
-        </button>
+        </Button>
       )}
     </div>
   );

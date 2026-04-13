@@ -73,6 +73,7 @@ class TestComputeAndSaveEvaluation:
         result = compute_and_save_evaluation(mock_model, X, y, feature_names, output)
 
         assert "metrics" in result
+        assert "decision_threshold" in result
         assert "confusion_matrix" in result
         assert "roc_curve" in result
         assert "prediction_distribution" in result
@@ -234,3 +235,29 @@ class TestComputeAndSaveEvaluation:
         info = result["dataset_info"]
         assert info["n_samples"] == 10
         assert info["n_features"] == 3
+
+    @patch("src.model.evaluate.shap.TreeExplainer")
+    def test_uses_custom_decision_threshold(
+        self,
+        mock_explainer_cls,
+        mock_model,
+        test_data,
+        feature_names,
+        tmp_path,
+    ):
+        X, y = test_data
+        mock_explainer = MagicMock()
+        mock_explainer.shap_values.return_value = np.random.randn(10, 3)
+        mock_explainer_cls.return_value = mock_explainer
+
+        result = compute_and_save_evaluation(
+            mock_model,
+            X,
+            y,
+            feature_names,
+            decision_threshold=0.8,
+            output_path=tmp_path / "e.json",
+        )
+
+        assert result["decision_threshold"] == 0.8
+        assert result["metrics"]["recall"] < 1.0
