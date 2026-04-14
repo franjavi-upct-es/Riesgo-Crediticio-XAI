@@ -35,6 +35,12 @@ model:
 smote:
   sampling_strategy: "minority"
   k_neighbors: 5
+  max_samples: 50000  # Skip SMOTE for datasets larger than this (use scale_pos_weight instead)
+
+performance:
+  tuning_max_samples: 30000  # Stratified subsample for Optuna tuning
+  shap_max_samples: 5000     # Subsample for SHAP explanations
+  n_jobs: 2                  # XGBoost threads (avoid -1 which copies data per core)
 
 mlflow:
   experiment_name: "credit-risk-xai"

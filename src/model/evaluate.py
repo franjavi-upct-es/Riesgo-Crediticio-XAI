@@ -36,6 +36,7 @@ def compute_and_save_evaluation(
     feature_names: list[str],
     output_path: Path | None = None,
     decision_threshold: float = 0.5,
+    shap_max_samples: int = 5_000,
 ) -> dict:
     """Compute full evaluation metrics and persist as JSON.
 
@@ -46,6 +47,7 @@ def compute_and_save_evaluation(
         feature_names: Ordered feature names.
         decision_threshold: Probability cutoff used to convert scores into labels.
         output_path: Where to save the JSON. Defaults to config path.
+        shap_max_samples: Max samples for SHAP computation to limit memory.
 
     Returns:
         Dictionary with all computed metrics.
@@ -84,10 +86,20 @@ def compute_and_save_evaluation(
         for i in range(len(hist_counts))
     ]
 
-    # --- Global SHAP importance ---
-    logger.info("computing_shap_importance")
+    # --- Global SHAP importance (subsample to cap memory) ---
+    if len(X_test) > shap_max_samples:
+        X_shap = X_test.sample(n=shap_max_samples, random_state=42)
+        logger.info(
+            "shap_subsampled",
+            original_size=len(X_test),
+            shap_size=shap_max_samples,
+        )
+    else:
+        X_shap = X_test
+
+    logger.info("computing_shap_importance", n_samples=len(X_shap))
     explainer = shap.TreeExplainer(model)
-    shap_values_raw = explainer.shap_values(X_test)
+    shap_values_raw = explainer.shap_values(X_shap)
 
     if isinstance(shap_values_raw, list):
         sv = np.asarray(shap_values_raw[1] if len(shap_values_raw) > 1 else shap_values_raw[0])

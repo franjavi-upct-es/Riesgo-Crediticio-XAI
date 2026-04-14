@@ -95,10 +95,23 @@ def _apply_smote_to_train(
     y_train: pd.Series,
     cfg: TrainingConfig,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """Apply SMOTE oversampling to the training set for class balance."""
+    """Apply SMOTE oversampling to the training set for class balance.
+
+    For datasets larger than cfg.smote_max_samples, SMOTE is skipped to
+    avoid excessive memory usage. The caller should rely on
+    scale_pos_weight for class balancing in those cases.
+    """
+    if len(X_train) > cfg.smote_max_samples:
+        logger.info(
+            "smote_skipped_large_dataset",
+            n_samples=len(X_train),
+            max_samples=cfg.smote_max_samples,
+        )
+        return X_train, y_train
+
     smote = _get_smote(cfg, y_train)
     if smote is None:
-        return X_train.copy(), y_train.copy()
+        return X_train, y_train
 
     X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
 
@@ -149,39 +162,59 @@ def _select_decision_threshold(
     y_proba: np.ndarray,
     metric: str = "f1",
 ) -> tuple[float, float]:
-    """Choose a probability threshold from validation predictions."""
+    """Choose a probability threshold from validation predictions.
+
+    Uses a fixed grid of 199 candidates instead of iterating over every
+    unique probability value, which caused O(n²) behaviour on large sets.
+    """
     if metric != "f1":
         raise ValueError(f"Unsupported threshold metric: {metric}")
 
-    candidate_thresholds = np.unique(
-        np.clip(
-            np.concatenate(
-                [
-                    np.linspace(0.05, 0.95, 19),
-                    y_proba,
-                    np.array([0.5]),
-                ]
-            ),
-            0.0,
-            1.0,
-        )
+    candidate_thresholds = np.linspace(0.05, 0.95, 199)
+
+    y_true_arr = np.asarray(y_true)
+    scores = np.array(
+        [
+            float(f1_score(y_true_arr, (y_proba >= t).astype(int), zero_division=0))
+            for t in candidate_thresholds
+        ]
     )
 
-    best_threshold = 0.5
-    best_score = -1.0
+    best_idx = int(np.argmax(scores))
+    best_score = float(scores[best_idx])
+    best_threshold = float(candidate_thresholds[best_idx])
 
-    for threshold in candidate_thresholds:
-        y_pred = (y_proba >= threshold).astype(int)
-        score = float(f1_score(y_true, y_pred, zero_division=0))
-        is_better_score = score > best_score
-        is_same_score_better_threshold = np.isclose(score, best_score) and abs(
-            threshold - 0.5
-        ) < abs(best_threshold - 0.5)
-        if is_better_score or is_same_score_better_threshold:
-            best_threshold = float(threshold)
-            best_score = score
+    # Among ties, prefer the threshold closest to 0.5
+    tie_mask = np.isclose(scores, best_score)
+    if tie_mask.sum() > 1:
+        tie_thresholds = candidate_thresholds[tie_mask]
+        best_threshold = float(tie_thresholds[np.argmin(np.abs(tie_thresholds - 0.5))])
 
     return round(best_threshold, 4), best_score
+
+
+def _subsample_stratified(
+    X: pd.DataFrame,
+    y: pd.Series,
+    max_samples: int,
+    random_state: int,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Stratified subsample to cap dataset size for expensive operations."""
+    if len(X) <= max_samples:
+        return X, y
+    _, X_sub, _, y_sub = train_test_split(
+        X, y,
+        test_size=max_samples,
+        random_state=random_state,
+        stratify=y,
+    )
+    logger.info(
+        "dataset_subsampled",
+        original_size=len(X),
+        subsampled_size=len(X_sub),
+        max_samples=max_samples,
+    )
+    return X_sub, y_sub
 
 
 def _tune_hyperparameters(
@@ -192,14 +225,21 @@ def _tune_hyperparameters(
 ) -> dict:
     """Run Optuna hyperparameter search with stratified cross-validation.
 
-    Returns the best hyperparameter dict ready for XGBClassifier.
+    For large datasets, a stratified subsample is used to keep memory
+    and runtime manageable. Returns the best hyperparameter dict ready
+    for XGBClassifier.
     """
     import optuna
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-    base_scale_pos_weight = _compute_scale_pos_weight(y_train)
-    class_counts = y_train.value_counts()
+    # Subsample large datasets for tuning to reduce memory and time
+    X_tune, y_tune = _subsample_stratified(
+        X_train, y_train, cfg.tuning_max_samples, cfg.random_state,
+    )
+
+    base_scale_pos_weight = _compute_scale_pos_weight(y_tune)
+    class_counts = y_tune.value_counts()
     minority_count = int(class_counts.min()) if len(class_counts) == 2 else 0
     n_splits = min(cfg.tuning_cv_folds, minority_count)
 
@@ -212,7 +252,7 @@ def _tune_hyperparameters(
         return {
             **cfg.model.to_xgb_params(),
             "scale_pos_weight": base_scale_pos_weight,
-            "n_jobs": -1,
+            "n_jobs": cfg.n_jobs,
             "random_state": cfg.random_state,
         }
 
@@ -241,7 +281,7 @@ def _tune_hyperparameters(
             "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),
             "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 10.0, log=True),
             "scale_pos_weight": scale_pos_weight,
-            "n_jobs": -1,
+            "n_jobs": cfg.n_jobs,
             "random_state": cfg.random_state,
         }
 
@@ -252,11 +292,11 @@ def _tune_hyperparameters(
         )
         auc_scores = []
 
-        for train_idx, val_idx in cv.split(X_train, y_train):
-            X_fold_train = X_train.iloc[train_idx]
-            y_fold_train = y_train.iloc[train_idx]
-            X_fold_val = X_train.iloc[val_idx]
-            y_fold_val = y_train.iloc[val_idx]
+        for train_idx, val_idx in cv.split(X_tune, y_tune):
+            X_fold_train = X_tune.iloc[train_idx]
+            y_fold_train = y_tune.iloc[train_idx]
+            X_fold_val = X_tune.iloc[val_idx]
+            y_fold_val = y_tune.iloc[val_idx]
 
             X_fold_train_balanced, y_fold_train_balanced = _apply_smote_to_train(
                 X_fold_train,
@@ -291,7 +331,7 @@ def _tune_hyperparameters(
     best["objective"] = "binary:logistic"
     best["eval_metric"] = "logloss"
     best.setdefault("scale_pos_weight", base_scale_pos_weight)
-    best["n_jobs"] = -1
+    best["n_jobs"] = cfg.n_jobs
     best["random_state"] = cfg.random_state
 
     logger.info(
@@ -405,7 +445,7 @@ def train_model(
         xgb_params = {
             **cfg.model.to_xgb_params(),
             "scale_pos_weight": base_scale_pos_weight,
-            "n_jobs": -1,
+            "n_jobs": cfg.n_jobs,
         }
 
     # --- 7. Train final model with early stopping on an untouched validation split ---
@@ -498,6 +538,7 @@ def train_model(
         feature_names=feature_names,
         decision_threshold=decision_threshold,
         output_path=eval_output,
+        shap_max_samples=cfg.shap_max_samples,
     )
 
     # --- 12. MLflow tracking ---

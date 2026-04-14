@@ -67,6 +67,10 @@ class TrainingConfig:
     model: ModelHyperparams = field(default_factory=ModelHyperparams)
     smote_strategy: str = "minority"
     smote_k_neighbors: int = 5
+    smote_max_samples: int = 50_000
+    tuning_max_samples: int = 30_000
+    shap_max_samples: int = 5_000
+    n_jobs: int = 2
     mlflow_experiment_name: str = "credit-risk-xai"
     mlflow_run_name_prefix: str = "xgb"
     mlflow_tags: dict[str, str] = field(default_factory=dict)
@@ -98,6 +102,7 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
     tuning_cfg = raw.get("tuning", {})
     threshold_cfg = raw.get("threshold", {})
     smote_cfg = raw.get("smote", {})
+    performance_cfg = raw.get("performance", {})
     mlflow_cfg = raw.get("mlflow", {})
 
     hyperparams = ModelHyperparams(
@@ -124,6 +129,10 @@ def load_training_config(config_path: Path | None = None) -> TrainingConfig:
         model=hyperparams,
         smote_strategy=smote_cfg.get("sampling_strategy", "minority"),
         smote_k_neighbors=smote_cfg.get("k_neighbors", 5),
+        smote_max_samples=smote_cfg.get("max_samples", 50_000),
+        tuning_max_samples=performance_cfg.get("tuning_max_samples", 30_000),
+        shap_max_samples=performance_cfg.get("shap_max_samples", 5_000),
+        n_jobs=performance_cfg.get("n_jobs", 2),
         mlflow_experiment_name=mlflow_cfg.get("experiment_name", "credit-risk-xai"),
         mlflow_run_name_prefix=mlflow_cfg.get("run_name_prefix", "xgb"),
         mlflow_tags=mlflow_cfg.get("tags", {}),
