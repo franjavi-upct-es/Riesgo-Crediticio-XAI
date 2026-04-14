@@ -203,7 +203,8 @@ def _subsample_stratified(
     if len(X) <= max_samples:
         return X, y
     _, X_sub, _, y_sub = train_test_split(
-        X, y,
+        X,
+        y,
         test_size=max_samples,
         random_state=random_state,
         stratify=y,
@@ -235,7 +236,10 @@ def _tune_hyperparameters(
 
     # Subsample large datasets for tuning to reduce memory and time
     X_tune, y_tune = _subsample_stratified(
-        X_train, y_train, cfg.tuning_max_samples, cfg.random_state,
+        X_train,
+        y_train,
+        cfg.tuning_max_samples,
+        cfg.random_state,
     )
 
     base_scale_pos_weight = _compute_scale_pos_weight(y_tune)
